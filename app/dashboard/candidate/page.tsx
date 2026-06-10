@@ -229,55 +229,80 @@ function ChatSection({ profile }: { profile: any }) {
 
 function JobsSection({ profile }: { profile: any }) {
   const [jobs, setJobs] = useState<any[]>([])
+  const [summary, setSummary] = useState("")
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
-  const [query, setQuery] = useState(profile?.desired_position || "")
-  const [location, setLocation] = useState(profile?.location || "")
+  const [cvText, setCvText] = useState("")
+  const [uploading, setUploading] = useState(false)
+
+  async function handleUploadCV(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    const formData = new FormData()
+    formData.append("file", file)
+    const res = await fetch("/api/parse-cv", { method: "POST", body: formData })
+    const data = await res.json()
+    if (data.text) setCvText(data.text)
+    setUploading(false)
+  }
 
   async function searchJobs() {
     setLoading(true)
     setSearched(true)
-    const res = await fetch(`/api/jobs?query=${encodeURIComponent(query)}&location=${encodeURIComponent(location)}`)
+    const res = await fetch("/api/jobs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cvText, profile })
+    })
     const data = await res.json()
     setJobs(data.jobs || [])
+    setSummary(data.summary || "")
     setLoading(false)
   }
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="bg-white rounded-2xl border border-slate-200 p-4 flex gap-3">
-        <input
-          type="text"
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          placeholder="Puesto o palabra clave"
-          className="flex-1 border border-slate-200 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-slate-400"
-        />
-        <input
-          type="text"
-          value={location}
-          onChange={e => setLocation(e.target.value)}
-          placeholder="Ubicación"
-          className="w-40 border border-slate-200 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-slate-400"
-        />
-        <button
-          onClick={searchJobs}
-          disabled={loading}
-          className="px-5 py-2.5 bg-teal-600 text-white rounded-lg text-sm hover:opacity-90 disabled:opacity-50"
-        >
-          {loading ? "Buscando..." : "Buscar"}
-        </button>
+
+      {/* Subir CV */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-5">
+        <h3 className="font-medium text-slate-700 mb-3">Sube tu CV para mejores resultados</h3>
+        <label className="cursor-pointer flex items-center gap-2 text-sm text-slate-600 bg-slate-50 hover:bg-slate-100 px-4 py-2.5 rounded-lg border border-slate-200 transition-all w-fit">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+          </svg>
+          {uploading ? "Procesando..." : cvText ? "CV cargado ✓" : "Subir CV (PDF)"}
+          <input type="file" accept=".pdf" className="hidden" onChange={handleUploadCV} disabled={uploading} />
+        </label>
+        {cvText && <p className="text-xs text-teal-600 mt-2">La IA usará tu CV para encontrar vacantes más compatibles</p>}
       </div>
+
+      {/* Botón buscar */}
+      <button
+        onClick={searchJobs}
+        disabled={loading}
+        className="w-full py-3 bg-teal-600 text-white rounded-xl text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
+      >
+        {loading ? "La IA está buscando vacantes para ti..." : "Buscar vacantes con IA"}
+      </button>
+
+      {/* Análisis de la IA */}
+      {summary && (
+        <div className="bg-teal-50 border border-teal-100 rounded-2xl p-4">
+          <p className="text-xs font-medium text-teal-700 mb-1">Análisis de tu perfil</p>
+          <p className="text-sm text-teal-800">{summary}</p>
+        </div>
+      )}
 
       {!searched && (
         <div className="text-center py-16 text-slate-400 text-sm">
-          Ingresa un puesto y presiona buscar para ver vacantes disponibles
+          Sube tu CV y presiona buscar para ver vacantes recomendadas por la IA
         </div>
       )}
 
       {searched && !loading && jobs.length === 0 && (
         <div className="text-center py-16 text-slate-400 text-sm">
-          No se encontraron vacantes. Intenta con otros términos.
+          No se encontraron vacantes. Intenta actualizar tu perfil con más detalles.
         </div>
       )}
 
@@ -287,7 +312,7 @@ function JobsSection({ profile }: { profile: any }) {
             <div>
               <h3 className="font-semibold text-slate-800">{job.title}</h3>
               <p className="text-sm text-slate-500 mt-0.5">{job.company} · {job.location}</p>
-              <p className="text-sm text-slate-600 mt-2 line-clamp-2">{job.description}</p>
+              <p className="text-sm text-slate-600 mt-2">{job.description}</p>
             </div>
             {job.salary && (
               <span className="text-xs font-medium px-3 py-1 bg-teal-50 text-teal-700 rounded-full whitespace-nowrap">

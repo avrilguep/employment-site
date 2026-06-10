@@ -1,27 +1,81 @@
+import Anthropic from "@anthropic-ai/sdk"
 import { NextRequest, NextResponse } from "next/server"
 
-export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url)
-  const query = searchParams.get("query") || ""
-  const location = searchParams.get("location") || "mexico"
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-  const appId = process.env.ADZUNA_APP_ID
-  const appKey = process.env.ADZUNA_APP_KEY
+export async function POST(req: NextRequest) {
+  try {
+    const { cvText, profile } = await req.json()
 
-  const url = `https://api.adzuna.com/v1/api/jobs/mx/search/1?app_id=${appId}&app_key=${appKey}&results_per_page=10&what=${encodeURIComponent(query)}&where=${encodeURIComponent(location)}`
+    const prompt = `Eres un experto en búsqueda de empleo.
+Analiza el siguiente CV y el perfil del candidato, luego genera 3 búsquedas específicas para encontrar trabajos compatibles.
 
-  const res = await fetch(url)
-  const data = await res.json()
+Perfil: ${profile?.desired_position} en ${profile?.desired_area}, modalidad ${profile?.work_modality}, ubicación ${profile?.location}
+Habilidades: ${profile?.skills?.join(", ")}
 
-  const jobs = (data.results || []).map((job: any) => ({
-    title: job.title,
-    company: job.company?.display_name || "Empresa confidencial",
-    location: job.location?.display_name || "",
-    description: job.description,
-    salary: job.salary_min ? `$${Math.round(job.salary_min).toLocaleString()} - $${Math.round(job.salary_max).toLocaleString()}` : null,
-    url: job.redirect_url,
-    source: "Adzuna"
-  }))
+${cvText ? `CV del candidato:\n${cvText.slice(0, 2000)}` : ""}
 
-  return NextResponse.json({ jobs })
+Responde ÚNICAMENTE con un JSON con este formato exacto, sin texto adicional:
+{
+  "searches": [
+    { "query": "término de búsqueda 1", "location": "ciudad" },
+    { "query": "término de búsqueda 2", "location": "ciudad" },
+    { "query": "término de búsqueda 3", "location": "ciudad" }
+  ],
+  "summary": "Breve análisis del perfil y qué tipo de trabajos le convienen"
+}`
+
+    const response = await anthropic.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 500,
+      messages: [{ role: "user", content: prompt }]
+    })
+
+    const text = response.content[0].type === "text" ? response.content[0].text : "{}"
+    const parsed = JSON.parse(text.replace(/```json|```/g, "").trim())
+
+    const allJobs: any[] = []
+
+    for (const search of parsed.searches || []) {
+      try {
+        const res = await fetch(
+          `https://jsearch.p.rapidapi.com/search?query=${encodeURIComponent(search.query + " " + search.location)}&num_pages=1&date_posted=month`,
+          {
+            headers: {
+              "X-RapidAPI-Key": process.env.RAPIDAPI_KEY || "",
+              "X-RapidAPI-Host": "jsearch.p.rapidapi.com"
+            }
+          }
+        )
+        const data = await res.json()
+        const jobs = (data.data || []).slice(0, 4).map((job: any) => ({
+          title: job.job_title,
+          company: job.employer_name,
+          location: `${job.job_city || ""} ${job.job_country || ""}`.trim(),
+          description: job.job_description?.slice(0, 200) + "...",
+          salary: job.job_min_salary
+            ? `$${job.job_min_salary.toLocaleString()} - $${job.job_max_salary?.toLocaleString()}`
+            : null,
+          url: job.job_apply_link,
+          source: job.job_publisher || "JSearch"
+        }))
+        allJobs.push(...jobs)
+      } catch (e) {
+        console.error("JSearch error:", e)
+      }
+    }
+
+    const uniqueJobs = allJobs.filter(
+      (job, index, self) => index === self.findIndex(j => j.title === job.title && j.company === job.company)
+    )
+
+    return NextResponse.json({
+      jobs: uniqueJobs,
+      summary: parsed.summary || ""
+    })
+
+  } catch (error: any) {
+    console.error("Jobs API error:", error)
+    return NextResponse.json({ jobs: [], summary: "Error al buscar trabajos." }, { status: 500 })
+  }
 }
