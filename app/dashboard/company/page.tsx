@@ -333,31 +333,9 @@ function PostingsSection() {
                   <p className="text-sm font-medium text-slate-700">
                     {candidates.length} candidato{candidates.length !== 1 ? "s" : ""} compatible{candidates.length !== 1 ? "s" : ""}
                   </p>
+                  {/* Aquí se muestra una lista simple de candidatos compatibles*/}
                   {candidates.map((c: any, i: number) => (
-                    <div key={i} className="bg-slate-50 rounded-xl p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-slate-800">{c.full_name}</p>
-                          <p className="text-xs text-slate-500 mt-0.5">
-                            {c.desired_position} · {c.work_modality} · {c.location}
-                          </p>
-                          {c.skills?.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-2">
-                              {c.skills.slice(0, 5).map((s: string) => (
-                                <span key={s} className="text-xs px-2 py-0.5 bg-white border border-slate-200 text-slate-600 rounded-full">
-                                  {s}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                        {c.match_score && (
-                          <span className="text-sm font-semibold text-purple-600 ml-4">
-                            {c.match_score}% match
-                          </span>
-                        )}
-                      </div>
-                    </div>
+                    <CandidateCard key={i} candidate={c} />
                   ))}
                 </div>
               )}
@@ -467,6 +445,151 @@ function AnalyzeSection({ profile }: { profile: any }) {
           </div>
         </div>
       )}
+    </div>
+  )
+
+  
+}
+
+function CandidateCard({ candidate }: { candidate: any }) {
+  const [showModal, setShowModal] = useState(false)
+
+  return (
+    <>
+      <div className="bg-slate-50 rounded-xl p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-slate-800">{candidate.full_name}</p>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {candidate.desired_position} · {candidate.work_modality} · {candidate.location}
+            </p>
+            {candidate.skills?.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {candidate.skills.slice(0, 5).map((s: string) => (
+                  <span key={s} className="text-xs px-2 py-0.5 bg-white border border-slate-200 text-slate-600 rounded-full">
+                    {s}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="flex flex-col items-end gap-2 ml-4">
+            {candidate.match_score && (
+              <span className="text-sm font-semibold text-purple-600">
+                {candidate.match_score}% match
+              </span>
+            )}
+            <button
+              onClick={() => setShowModal(true)}
+              className="px-3 py-1.5 bg-purple-600 text-white rounded-lg text-xs font-medium hover:opacity-90"
+            >
+              Ver CV
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {showModal && (
+        <CVModal candidate={candidate} onClose={() => setShowModal(false)} />
+      )}
+    </>
+  )
+}
+
+function CVModal({ candidate, onClose }: { candidate: any; onClose: () => void }) {
+  function downloadCV() {
+    const content = `CV - ${candidate.full_name}
+${"=".repeat(40)}
+Puesto deseado: ${candidate.desired_position}
+Área: ${candidate.desired_area}
+Modalidad: ${candidate.work_modality}
+Ubicación: ${candidate.location}
+Habilidades: ${candidate.skills?.join(", ")}
+
+${"=".repeat(40)}
+CV COMPLETO
+${"=".repeat(40)}
+
+${candidate.cv_text || "No disponible"}`
+
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `CV_${candidate.full_name?.replace(/ /g, "_") || "candidato"}.txt`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl w-full max-w-2xl shadow-xl max-h-[90vh] flex flex-col"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="p-6 border-b border-slate-100 flex items-start justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-800">{candidate.full_name}</h2>
+            <p className="text-sm text-slate-500 mt-0.5">
+              {candidate.desired_position} · {candidate.work_modality} · {candidate.location}
+            </p>
+            {candidate.match_score && (
+              <span className="text-xs font-medium px-2 py-0.5 bg-purple-50 text-purple-700 rounded-full mt-2 inline-block">
+                {candidate.match_score}% compatible
+              </span>
+            )}
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xl leading-none ml-4">
+            ×
+          </button>
+        </div>
+
+        {/* Info básica */}
+        <div className="px-6 py-4 border-b border-slate-100">
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { label: "Área", value: candidate.desired_area },
+              { label: "Modalidad", value: candidate.work_modality },
+              { label: "Ubicación", value: candidate.location },
+              { label: "Habilidades", value: candidate.skills?.join(", ") },
+            ].map(item => item.value && (
+              <div key={item.label}>
+                <p className="text-xs text-slate-400">{item.label}</p>
+                <p className="text-sm text-slate-700 mt-0.5">{item.value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* CV texto */}
+        <div className="flex-1 overflow-y-auto p-6">
+          <p className="text-xs font-medium text-slate-500 mb-3">CV completo</p>
+          {candidate.cv_text ? (
+            <pre className="text-sm text-slate-700 whitespace-pre-wrap font-sans leading-relaxed">
+              {candidate.cv_text}
+            </pre>
+          ) : (
+            <p className="text-sm text-slate-400">El candidato no ha subido su CV.</p>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="p-6 border-t border-slate-100">
+          <button
+            onClick={downloadCV}
+            className="w-full py-2.5 rounded-lg text-sm font-medium text-white bg-purple-600 hover:opacity-90 flex items-center justify-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+            </svg>
+            Descargar CV
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
