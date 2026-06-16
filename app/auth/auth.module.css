@@ -1,0 +1,167 @@
+/* ── Layout ── */
+.main {
+  background:#f6fbff;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+/* ── Card ── */
+.card {
+  background: white;
+  border-radius: 1.25rem;
+  padding: 2rem;
+  width: 100%;
+  max-width: 28rem;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+}
+
+/* ── Header ── */
+.header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+}
+
+.badgeCandidate {
+  background: #c6f2e5;
+  color: #10b981;
+}
+
+.badgeCompany {
+  background: #cadeff;
+  color: #3c81f1;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-top: 0.75rem;
+}
+
+/* ── Formulario ── */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.label {
+  font-size: 0.875rem;
+  color: #475569;
+  font-weight: 500;
+}
+
+.input {
+  width: 100%;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 0.625rem;
+  padding: 0.65rem 1rem;
+  font-size: 0.875rem;
+  outline: none;
+  color: #1e293b;
+  background: #f8fafc;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+  font-family: Arial, sans-serif;
+}
+
+.input:focus {
+  border-color: #94a3b8;
+  background: white;
+}
+
+/* ── Error ── */
+.error {
+  font-size: 0.8rem;
+  color: #ef4444;
+  background: #fef2f2;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  text-align: center;
+}
+
+/* ── Botón ── */
+.btn {
+  width: 100%;
+  padding: 0.75rem;
+  border-radius: 0.625rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  font-family: Arial, sans-serif;
+}
+
+.btn:hover {
+  opacity: 0.9;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btnCandidate {
+  background: linear-gradient(90deg, #10b981);
+}
+
+.btnCompany {
+  background: linear-gradient(90deg, #3c81f1);
+}
+
+/* ── Footer ── */
+.footer {
+  text-align: center;
+  font-size: 0.875rem;
+  color: #94a3b8;
+  margin-top: 1.25rem;
+}
+
+.toggleBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  font-family: Arial, sans-serif;
+  font-size: 0.875rem;
+}
+
+.toggleCandidate {
+  color: #10b981;
+}
+
+.toggleCompany {
+  color: #3c81f1;
+}
+
+.backLink {
+  display: block;
+  margin-top: 0.5rem;
+  color: #94a3b8;
+  text-decoration: none;
+  font-size: 0.875rem;
+  transition: color 0.2s;
+}
+
+.backLink:hover {
+  color: #475569;
+}

@@ -1,5 +1,7 @@
 "use client"
 
+import type { CompanyProfile, Posting, Candidate, CVFile } from "@/app/types/company"
+
 import { useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
@@ -13,7 +15,7 @@ const SKILLS_SUGERIDAS = [
 
 export default function CompanyDashboard() {
   const [activeTab, setActiveTab] = useState<"publish" | "postings" | "analyze">("postings")
-  const [profile, setProfile] = useState<any>(null)
+  const [profile, setProfile] = useState<CompanyProfile | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
@@ -59,7 +61,7 @@ export default function CompanyDashboard() {
           ].map(tab => (
             <button
               key={tab.key}
-              onClick={() => setActiveTab(tab.key as any)}
+              onClick={() => setActiveTab(tab.key as "publish" | "postings" | "analyze")}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                 activeTab === tab.key
                   ? "bg-purple-600 text-white"
@@ -88,7 +90,8 @@ export default function CompanyDashboard() {
   )
 }
 
-function PublishSection({ profile, onPublished }: { profile: any, onPublished: () => void }) {
+function PublishSection({ profile, onPublished }: { profile: CompanyProfile | null; onPublished: () => void })
+ {
   const supabase = createClient()
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
@@ -127,11 +130,10 @@ function PublishSection({ profile, onPublished }: { profile: any, onPublished: (
       })
       if (error) throw error
       onPublished()
-    } catch (err: any) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
+    } catch (err: unknown) {
+    setError(err instanceof Error ? err.message : "Ocurrió un error")
     }
+
   }
 
   return (
@@ -228,10 +230,10 @@ function PublishSection({ profile, onPublished }: { profile: any, onPublished: (
 
 function PostingsSection() {
   const supabase = createClient()
-  const [postings, setPostings] = useState<any[]>([])
+  const [postings, setPostings] = useState<Posting[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedPosting, setSelectedPosting] = useState<any>(null)
-  const [candidates, setCandidates] = useState<any[]>([])
+  const [selectedPosting, setSelectedPosting] = useState<Posting | null>(null)
+  const [candidates, setCandidates] = useState<Candidate[]>([])
   const [searching, setSearching] = useState(false)
 
   useEffect(() => {
@@ -249,7 +251,7 @@ function PostingsSection() {
     load()
   }, [])
 
-  async function searchCandidates(posting: any) {
+  async function searchCandidates(posting: Posting) {
     setSelectedPosting(posting)
     setSearching(true)
     setCandidates([])
@@ -334,7 +336,7 @@ function PostingsSection() {
                     {candidates.length} candidato{candidates.length !== 1 ? "s" : ""} compatible{candidates.length !== 1 ? "s" : ""}
                   </p>
                   {/* Aquí se muestra una lista simple de candidatos compatibles*/}
-                  {candidates.map((c: any, i: number) => (
+                  {candidates.map((c: Candidate, i: number) => (
                     <CandidateCard key={i} candidate={c} />
                   ))}
                 </div>
@@ -347,8 +349,8 @@ function PostingsSection() {
   )
 }
 
-function AnalyzeSection({ profile }: { profile: any }) {
-  const [cvFiles, setCvFiles] = useState<{ name: string; text: string }[]>([])
+function AnalyzeSection({ profile }: { profile: CompanyProfile | null }){
+  const [cvFiles, setCvFiles] = useState<CVFile[]>([])
   const [requirements, setRequirements] = useState("")
   const [analysis, setAnalysis] = useState("")
   const [loading, setLoading] = useState(false)
@@ -451,7 +453,7 @@ function AnalyzeSection({ profile }: { profile: any }) {
   
 }
 
-function CandidateCard({ candidate }: { candidate: any }) {
+function CandidateCard({ candidate }: { candidate: Candidate }) {
   const [showModal, setShowModal] = useState(false)
 
   return (
@@ -496,7 +498,7 @@ function CandidateCard({ candidate }: { candidate: any }) {
   )
 }
 
-function CVModal({ candidate, onClose }: { candidate: any; onClose: () => void }) {
+function CVModal({ candidate, onClose }: { candidate: Candidate; onClose: () => void }) {
   function downloadCV() {
     const content = `CV - ${candidate.full_name}
 ${"=".repeat(40)}

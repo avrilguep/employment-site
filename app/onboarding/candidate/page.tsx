@@ -59,11 +59,9 @@ export default function CandidateOnboarding() {
 
       if (error) throw error
       router.push("/dashboard/candidate")
-    } catch (err: any) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Ocurrió un error")
+    } 
   }
 
   return (

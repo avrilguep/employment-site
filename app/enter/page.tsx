@@ -1,13 +1,17 @@
 "use client"
+
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import styles from "./page.module.css"
+import PrivacyModal from "./PrivacyModal"
 
 export default function EnterPage() {
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const [showPrivacy, setShowPrivacy] = useState(false)
+  const [privacyAccepted, setPrivacyAccepted] = useState<boolean | null>(null)
   const router = useRouter()
 
   async function handleSubmit(e: React.FormEvent) {
@@ -20,12 +24,24 @@ export default function EnterPage() {
       body: JSON.stringify({ password }),
     })
     if (res.ok) {
-      router.push("/")
-      router.refresh()
+      setShowPrivacy(true)
+      setLoading(false)
     } else {
       setError("Contraseña incorrecta")
       setLoading(false)
     }
+  }
+
+  function handleAccept() {
+    setShowPrivacy(false)
+    setPrivacyAccepted(true)
+    router.push("/")
+    router.refresh()
+  }
+
+  function handleReject() {
+    setShowPrivacy(false)
+    setPrivacyAccepted(false)
   }
 
   return (
@@ -52,8 +68,41 @@ export default function EnterPage() {
           {/* Bienvenido fuera del card */}
           <h2 className={styles.welcome}>¡BIENVENIDO!</h2>
 
-          {/* Card sin h2 adentro */}
+          {/* Card */}
           <div className={styles.card}>
+
+            {/* Mensaje si rechazó políticas */}
+            {privacyAccepted === false && (
+              <div style={{
+                background: "#fef2f2",
+                border: "1px solid #fecaca",
+                borderRadius: "12px",
+                padding: "12px 16px",
+                marginBottom: "16px"
+              }}>
+                <p style={{ fontSize: "13px", fontWeight: 600, color: "#b91c1c", marginBottom: "4px" }}>
+                  Acceso no disponible
+                </p>
+                <p style={{ fontSize: "12px", color: "#ef4444" }}>
+                  Para usar Employment Site es necesario aceptar las políticas de privacidad.
+                </p>
+                <button
+                  onClick={() => setPrivacyAccepted(null)}
+                  style={{
+                    marginTop: "8px",
+                    fontSize: "12px",
+                    color: "#6b7280",
+                    textDecoration: "underline",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer"
+                  }}
+                >
+                  Revisar políticas de privacidad
+                </button>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className={styles.form}>
               <label className={styles.label}>
                 Ingresa la contraseña de acceso
@@ -67,13 +116,16 @@ export default function EnterPage() {
                   placeholder="••••••••••••"
                   required
                   autoFocus
+                  disabled={privacyAccepted === false}
                   className={styles.input}
+                  style={privacyAccepted === false ? { opacity: 0.5, cursor: "not-allowed" } : {}}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(v => !v)}
                   className={styles.eyeBtn}
                   tabIndex={-1}
+                  disabled={privacyAccepted === false}
                 >
                   {showPassword ? (
                     <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -92,16 +144,20 @@ export default function EnterPage() {
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || privacyAccepted === false}
                 className={styles.submitBtn}
+                style={privacyAccepted === false ? { opacity: 0.5, cursor: "not-allowed" } : {}}
               >
                 {loading ? "Verificando..." : "Entrar"}
               </button>
             </form>
           </div>
-
         </div>
       </div>
+
+      {showPrivacy && (
+        <PrivacyModal onAccept={handleAccept} onReject={handleReject} />
+      )}
     </main>
   )
 }

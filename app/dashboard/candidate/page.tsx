@@ -1,6 +1,8 @@
 
 "use client"
 
+import type { CandidateProfile, Message, Job } from "@/app/types/candidate"
+
 import { useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
@@ -9,7 +11,7 @@ import ReactMarkdown from "react-markdown"
 
 export default function CandidateDashboard() {
   const [activeTab, setActiveTab] = useState<"chat" | "jobs" | "profile">("chat")
-  const [profile, setProfile] = useState<any>(null)
+  const [profile, setProfile] = useState<CandidateProfile | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
@@ -74,7 +76,7 @@ export default function CandidateDashboard() {
           ].map(tab => (
             <button
               key={tab.key}
-              onClick={() => setActiveTab(tab.key as any)}
+              onClick={() => setActiveTab(tab.key as "chat" | "jobs" | "profile")}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                 activeTab === tab.key
                   ? "bg-teal-600 text-white"
@@ -96,10 +98,11 @@ export default function CandidateDashboard() {
   )
 }
 
-function ChatSection({ profile }: { profile: any }) {
+function ChatSection({ profile }:  { profile: CandidateProfile | null }) {
   const [messages, setMessages] = useState<{ role: string; content: string }[]>([
     { role: "assistant", content: `Hola! Soy tu asistente de carrera. Puedo ayudarte a mejorar tu CV, prepararte para entrevistas o resolver dudas sobre tu búsqueda de empleo. ¿En qué te ayudo?` }
   ])
+  
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
   const [cvText, setCvText] = useState("")
@@ -222,14 +225,14 @@ function ChatSection({ profile }: { profile: any }) {
   )
 }
 
-function JobsSection({ profile }: { profile: any }) {
-  const [jobs, setJobs] = useState<any[]>([])
+function JobsSection({ profile }: { profile: CandidateProfile | null }) {
+  const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
   const [cvText, setCvText] = useState("")
   const [uploading, setUploading] = useState(false)
   const [showModal, setShowModal] = useState(false)
-  const [selectedJob, setSelectedJob] = useState<any>(null)
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null)
 
   const [filters, setFilters] = useState({
     position: "",
@@ -263,7 +266,7 @@ function JobsSection({ profile }: { profile: any }) {
     setLoading(false)
   }
 
-  function handleViewDetails(job: any) {
+  function handleViewDetails(job: Job) {
     setSelectedJob(job)
     setShowModal(true)
   }
@@ -395,7 +398,7 @@ function JobsSection({ profile }: { profile: any }) {
   )
 }
 
-function MembershipModal({ job, onClose }: { job: any; onClose: () => void }) {
+function MembershipModal({ job, onClose }: { job: Job; onClose: () => void }) {
   return (
     <div
       className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
@@ -515,7 +518,7 @@ function MembershipModal({ job, onClose }: { job: any; onClose: () => void }) {
 }
 
 
-  function PublicProfileSection({ profile }: { profile: any }) {
+  function PublicProfileSection({ profile }: { profile: CandidateProfile | null }) {
   const supabase = createClient()
   const [cvText, setCvText] = useState(profile?.cv_text || "")
   const [isPublic, setIsPublic] = useState(profile?.cv_public || false)

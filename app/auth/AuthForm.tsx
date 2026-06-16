@@ -1,4 +1,5 @@
 "use client"
+import Link from "next/link"
 
 import { useState } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
@@ -44,11 +45,9 @@ export default function AuthForm() {
 
         router.push(role === "candidate" ? "/onboarding/candidate" : "/onboarding/company")
       }
-    } catch (err: any) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Ocurrió un error")
+      }
   }
 
   return (
@@ -137,7 +136,9 @@ export default function AuthForm() {
 
         {/* Volver */}
         <p className="text-center text-sm text-slate-400 mt-2">
-          <a href="/" className="hover:text-slate-600">← Volver al inicio</a>
+          <Link href="/" className="hover:text-slate-600">
+            ← Volver al inicio
+          </Link>
         </p>
 
       </div>

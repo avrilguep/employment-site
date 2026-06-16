@@ -7,7 +7,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  /*--font-sans: var(--font-sans);*/
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -122,10 +122,11 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply text-foreground;  /* ← quita bg-background, deja solo text-foreground */
+    @apply text-foreground; 
+    font-family: Arial, sans-serif;
   }
   html {
-    @apply font-sans;
+    font-family: Arial, sans-serif;
   }
 }
 
@@ -139,5 +140,5 @@
 }
 
 main {
-  animation: fadeIn 2s ease-out forwards;
+  animation: fadeIn 0.7s ease-out forwards;
 }
