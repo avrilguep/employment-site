@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation"
 import ReactMarkdown from "react-markdown"
 
 
+
 export default function CandidateDashboard() {
   const [activeTab, setActiveTab] = useState<"chat" | "jobs" | "profile">("chat")
   const [profile, setProfile] = useState<CandidateProfile | null>(null)
