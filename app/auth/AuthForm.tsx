@@ -1,9 +1,12 @@
 "use client"
-import Link from "next/link"
+
+
 
 import { useState } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
+import Link from "next/link"
 import { createClient } from "@/lib/supabase"
+import styles from "./auth.module.css"
 
 export default function AuthForm() {
   const searchParams = useSearchParams()
@@ -18,128 +21,114 @@ export default function AuthForm() {
   const [loading, setLoading] = useState(false)
 
   const supabase = createClient()
-
-  const roleLabel = role === "candidate" ? "candidato" : "empresa"
-  const roleColor = role === "candidate" ? "teal" : "purple"
+  const isCandidate = role === "candidate"
+  const roleLabel = isCandidate ? "candidato" : "empresa"
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError("")
     setLoading(true)
-
     try {
       if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
-        router.push(role === "candidate" ? "/dashboard/candidate" : "/dashboard/company")
+        router.push(isCandidate ? "/dashboard/candidate" : "/dashboard/company")
       } else {
         const { data, error } = await supabase.auth.signUp({ email, password })
         if (error) throw error
-
         if (data.user) {
           const { error: profileError } = await supabase
             .from("profiles")
             .insert({ id: data.user.id, role, full_name: fullName })
           if (profileError) throw profileError
         }
-
-        router.push(role === "candidate" ? "/onboarding/candidate" : "/onboarding/company")
+        router.push(isCandidate ? "/onboarding/candidate" : "/onboarding/company")
       }
-      } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : "Ocurrió un error")
-      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Ocurrió un error")
+    }
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
-      <div className="bg-white rounded-2xl border border-slate-200 p-8 w-full max-w-md">
+    <main className={styles.main}>
+      <div className={styles.card}>
 
         {/* Header */}
-        <div className="mb-6 text-center">
-          <span className={`text-xs font-medium px-3 py-1 rounded-full ${
-            role === "candidate"
-              ? "bg-teal-50 text-teal-700"
-              : "bg-purple-50 text-purple-700"
-          }`}>
+        <div className={styles.header}>
+          <span className={`${styles.badge} ${isCandidate ? styles.badgeCandidate : styles.badgeCompany}`}>
             Acceso como {roleLabel}
           </span>
-          <h1 className="text-2xl font-bold text-slate-800 mt-3">
+          <h1 className={styles.title}>
             {isLogin ? "Iniciar sesión" : "Crear cuenta"}
           </h1>
         </div>
 
         {/* Formulario */}
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className={styles.form}>
           {!isLogin && (
-            <div>
-              <label className="text-sm text-slate-600 mb-1 block">Nombre completo</label>
+            <div className={styles.field}>
+              <label className={styles.label}>Nombre completo</label>
               <input
                 type="text"
                 value={fullName}
                 onChange={e => setFullName(e.target.value)}
                 placeholder="Tu nombre"
                 required
-                className="w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-slate-400"
+                className={styles.input}
               />
             </div>
           )}
 
-          <div>
-            <label className="text-sm text-slate-600 mb-1 block">Correo electrónico</label>
+          <div className={styles.field}>
+            <label className={styles.label}>Correo electrónico</label>
             <input
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
               placeholder="tu@correo.com"
               required
-              className="w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-slate-400"
+              className={styles.input}
             />
           </div>
 
-          <div>
-            <label className="text-sm text-slate-600 mb-1 block">Contraseña</label>
+          <div className={styles.field}>
+            <label className={styles.label}>Contraseña</label>
             <input
               type="password"
               value={password}
               onChange={e => setPassword(e.target.value)}
               placeholder="Mínimo 6 caracteres"
               required
-              className="w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-slate-400"
+              className={styles.input}
             />
           </div>
 
-          {error && (
-            <p className="text-sm text-red-500 bg-red-50 px-4 py-2 rounded-lg">{error}</p>
-          )}
+          {error && <p className={styles.error}>{error}</p>}
 
           <button
             type="submit"
             disabled={loading}
-            className={`w-full py-2.5 rounded-lg text-sm font-medium text-white transition-opacity ${
-              loading ? "opacity-60 cursor-not-allowed" : "hover:opacity-90"
-            } ${role === "candidate" ? "bg-teal-600" : "bg-purple-600"}`}
+            className={`${styles.btn} ${isCandidate ? styles.btnCandidate : styles.btnCompany}`}
           >
             {loading ? "Cargando..." : isLogin ? "Entrar" : "Crear cuenta"}
           </button>
         </form>
 
-        {/* Toggle login/registro */}
-        <p className="text-center text-sm text-slate-500 mt-6">
-          {isLogin ? "¿No tienes cuenta?" : "¿Ya tienes cuenta?"}{" "}
-          <button
-            onClick={() => { setIsLogin(!isLogin); setError("") }}
-            className={`font-medium ${role === "candidate" ? "text-teal-600" : "text-purple-600"}`}
-          >
-            {isLogin ? "Regístrate" : "Inicia sesión"}
-          </button>
-        </p>
-
-        {/* Volver */}
-        <p className="text-center text-sm text-slate-400 mt-2">
-          <Link href="/" className="hover:text-slate-600">
+        {/* Footer */}
+        <div className={styles.footer}>
+          <p>
+            {isLogin ? "¿No tienes cuenta?" : "¿Ya tienes cuenta?"}{" "}
+            <button
+              onClick={() => { setIsLogin(!isLogin); setError("") }}
+              className={`${styles.toggleBtn} ${isCandidate ? styles.toggleCandidate : styles.toggleCompany}`}
+            >
+              {isLogin ? "Regístrate" : "Inicia sesión"}
+            </button>
+          </p>
+          <Link href="/" className={styles.backLink}>
             ← Volver al inicio
           </Link>
-        </p>
+        </div>
 
       </div>
     </main>
