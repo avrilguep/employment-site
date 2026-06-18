@@ -3,6 +3,7 @@ export type CompanyProfile = {
   company_name: string
   industry: string
   location: string
+  full_name?: string
 }
 
 export type Posting = {

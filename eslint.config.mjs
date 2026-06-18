@@ -16,3 +16,7 @@ const eslintConfig = defineConfig([
 ]);
 
 export default eslintConfig;
+
+rules: {
+  "@typescript-eslint/no-explicit-any": "off"
+}

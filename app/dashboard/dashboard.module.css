@@ -1,7 +1,7 @@
 /* ── Layout ── */
 .main {
   min-height: 100vh;
-  background: #f0f4f8;
+  background: #f6fbff;
 }
 
 .navbar {
@@ -30,8 +30,8 @@
   font-weight: 500;
   padding: 0.25rem 0.75rem;
   border-radius: 999px;
-  background: #d1fae5;
-  color: #059669;
+  background: #c6f2e5;
+  color: #10b981;
 }
 
 .badgeCompany {
@@ -39,8 +39,8 @@
   font-weight: 500;
   padding: 0.25rem 0.75rem;
   border-radius: 999px;
-  background: #dbeafe;
-  color: #2563eb;
+  background: #cadeff;
+  color: #3c81f1;
 }
 
 .signOutBtn {
@@ -53,7 +53,9 @@
   transition: color 0.2s;
 }
 
-.signOutBtn:hover { color: #475569; }
+.signOutBtn:hover { 
+  color: #475569; 
+}
 
 .content {
   max-width: 56rem;
@@ -99,7 +101,9 @@
   transition: all 0.2s;
 }
 
-.tab:hover { border-color: #cbd5e1; }
+.tab:hover { 
+  border-color: #cbd5e1; 
+}
 
 .tabActiveCandidate {
   background: #10b981;
@@ -284,7 +288,7 @@
 
 /* ── Botones ── */
 .btnCandidate {
-  background: linear-gradient(90deg, #2ecc71, #10b981);
+  background: #10b981;
   color: white;
   border: none;
   border-radius: 0.625rem;
@@ -296,11 +300,19 @@
   transition: opacity 0.2s;
 }
 
-.btnCandidate:hover { opacity: 0.9; }
-.btnCandidate:disabled { opacity: 0.5; cursor: not-allowed; }
+.btnCandidate:hover { 
+  opacity: 0.9; 
+  background: #059669;
+  
+}
+
+.btnCandidate:disabled { 
+  opacity: 0.5; 
+  cursor: not-allowed; 
+}
 
 .btnCompany {
-  background: linear-gradient(90deg, #3b82f6, #2563eb);
+  background: #3c81f1;
   color: white;
   border: none;
   border-radius: 0.625rem;
@@ -312,8 +324,13 @@
   transition: opacity 0.2s;
 }
 
-.btnCompany:hover { opacity: 0.9; }
-.btnCompany:disabled { opacity: 0.5; cursor: not-allowed; }
+.btnCompany:hover { 
+  opacity: 0.9; 
+}
+.btnCompany:disabled { 
+  opacity: 0.5; 
+  cursor: not-allowed; 
+}
 
 .btnFullWidth { width: 100%; }
 

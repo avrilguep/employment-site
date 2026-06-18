@@ -1,16 +1,20 @@
 "use client"
 
 import type { CompanyProfile, Posting, Candidate, CVFile } from "@/app/types/company"
-
 import { useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
 import ReactMarkdown from "react-markdown"
+import styles from "../dashboard.module.css"
 
 const SKILLS_SUGERIDAS = [
-  "JavaScript", "Python", "React", "Node.js", "SQL",
-  "Excel", "Diseño gráfico", "Marketing digital", "Ventas",
-  "Atención al cliente", "Gestión de proyectos", "Inglés"
+  "Microsoft Office", "Excel avanzado", "Trabajo en equipo",
+  "Comunicación efectiva", "Liderazgo", "Gestión de proyectos",
+  "Atención al cliente", "Ventas", "Negociación",
+  "Inglés", "Francés", "Análisis de datos",
+  "Redes sociales", "Marketing digital", "Contabilidad",
+  "Recursos humanos", "Logística", "Diseño gráfico",
+  "Resolución de problemas", "Trabajo bajo presión"
 ]
 
 export default function CompanyDashboard() {
@@ -21,15 +25,17 @@ export default function CompanyDashboard() {
 
   useEffect(() => {
     async function loadProfile() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push("/"); return }
-      const { data } = await supabase
-        .from("company_profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single()
-      setProfile(data)
-    }
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { router.push("/"); return }
+
+    const { data } = await supabase
+      .from("company_profiles")
+      .select("*, profiles(full_name)")
+      .eq("id", user.id)
+      .single()
+
+    setProfile({ ...data, full_name: data?.profiles?.full_name })
+  }
     loadProfile()
   }, [])
 
@@ -39,21 +45,42 @@ export default function CompanyDashboard() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50">
-      <nav className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="font-bold text-slate-800">Employment Site</span>
-          <span className="text-xs px-2 py-0.5 bg-purple-50 text-purple-700 rounded-full">
-            {profile?.company_name || "Empresa"}
-          </span>
+    <main className={styles.main}>
+      <nav className={styles.navbar}>
+        <div className={styles.navBrand}>
+          <span className={styles.navTitle}>Employment Site</span>
+
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+            <span className={styles.badgeCompany}>
+              {profile?.company_name || "Empresa"}
+            </span>
+            
+          </div>
+
+          {profile?.full_name && (
+              <span style={{ fontSize: "11px", color: "#94a3b8", marginTop: "2px" }}>
+                {profile.full_name}
+              </span>
+            )}
+
         </div>
-        <button onClick={handleSignOut} className="text-sm text-slate-500 hover:text-slate-700">
-          Cerrar sesión
-        </button>
+        <button onClick={handleSignOut} className={styles.signOutBtn}>Cerrar sesión</button>
       </nav>
 
-      <div className="max-w-4xl mx-auto p-6">
-        <div className="flex gap-2 mb-6">
+      <div className={styles.content}>
+
+        {profile && (
+          <div className={styles.welcomeBlock}>
+            <h1 className={styles.welcomeTitle}>
+              Hola, {profile?.full_name?.split(" ")[0]} 👋
+            </h1>
+            <p className={styles.welcomeSub}>
+              {profile.company_name} · {profile.industry}
+            </p>
+          </div>
+        )}
+        
+        <div className={styles.tabs}>
           {[
             { key: "postings", label: "Mis vacantes" },
             { key: "publish", label: "Publicar vacante" },
@@ -62,36 +89,22 @@ export default function CompanyDashboard() {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key as "publish" | "postings" | "analyze")}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                activeTab === tab.key
-                  ? "bg-purple-600 text-white"
-                  : "bg-white text-slate-600 border border-slate-200 hover:border-slate-300"
-              }`}
+              className={`${styles.tab} ${activeTab === tab.key ? styles.tabActiveCompany : ""}`}
             >
               {tab.label}
             </button>
           ))}
         </div>
 
-        {activeTab === "publish" && (
-          <PublishSection
-            profile={profile}
-            onPublished={() => setActiveTab("postings")}
-          />
-        )}
-        {activeTab === "postings" && (
-          <PostingsSection />
-        )}
-        {activeTab === "analyze" && (
-          <AnalyzeSection profile={profile} />
-        )}
+        {activeTab === "publish" && <PublishSection onPublished={() => setActiveTab("postings")} />}
+        {activeTab === "postings" && <PostingsSection />}
+        {activeTab === "analyze" && <AnalyzeSection profile={profile} />}
       </div>
     </main>
   )
 }
 
-function PublishSection({ profile, onPublished }: { profile: CompanyProfile | null; onPublished: () => void })
- {
+function PublishSection({ onPublished }: { onPublished: () => void }) {
   const supabase = createClient()
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
@@ -120,107 +133,83 @@ function PublishSection({ profile, onPublished }: { profile: CompanyProfile | nu
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error("No hay sesión activa")
       const { error } = await supabase.from("job_postings").insert({
-        company_id: user.id,
-        title,
-        description,
-        required_skills: skills,
-        modality,
-        location,
-        salary_range: salaryRange,
+        company_id: user.id, title, description,
+        required_skills: skills, modality, location, salary_range: salaryRange,
       })
       if (error) throw error
       onPublished()
     } catch (err: unknown) {
-    setError(err instanceof Error ? err.message : "Ocurrió un error")
+      setError(err instanceof Error ? err.message : "Ocurrió un error")
+    } finally {
+      setLoading(false)
     }
-
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-6">
-      <h2 className="font-semibold text-slate-800 mb-5">Nueva vacante</h2>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-        <div>
-          <label className="text-sm text-slate-600 mb-1 block">Puesto</label>
-          <input
-            type="text" value={title} onChange={e => setTitle(e.target.value)}
-            placeholder="Ej: Desarrollador Frontend Senior"
-            required
-            className="w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-slate-400"
-          />
+    <div className={styles.card}>
+      <p className={styles.cardTitle}>Nueva vacante</p>
+      <form onSubmit={handleSubmit} className={styles.form}>
+        <div className={styles.field}>
+          <label className={styles.label}>Puesto</label>
+          <input type="text" value={title} onChange={e => setTitle(e.target.value)}
+            placeholder="Ej: Ejecutivo de ventas" required className={styles.input} />
         </div>
-        <div>
-          <label className="text-sm text-slate-600 mb-1 block">Descripción del puesto</label>
-          <textarea
-            value={description} onChange={e => setDescription(e.target.value)}
+
+        <div className={styles.field}>
+          <label className={styles.label}>Descripción del puesto</label>
+          <textarea value={description} onChange={e => setDescription(e.target.value)}
             placeholder="Describe las responsabilidades, el equipo y el ambiente de trabajo..."
-            rows={4}
-            className="w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-slate-400 resize-none"
-          />
+            rows={4} className={styles.textarea} />
         </div>
-        <div>
-          <label className="text-sm text-slate-600 mb-2 block">Habilidades requeridas</label>
-          <div className="flex flex-wrap gap-2 mb-3">
+
+        <div className={styles.field}>
+          <label className={styles.label}>Habilidades requeridas</label>
+          <div className={styles.chipsGroup}>
             {SKILLS_SUGERIDAS.map(skill => (
               <button key={skill} type="button" onClick={() => toggleSkill(skill)}
-                className={`px-3 py-1 rounded-full text-xs border transition-all ${
-                  skills.includes(skill)
-                    ? "border-purple-500 bg-purple-50 text-purple-700"
-                    : "border-slate-200 text-slate-500 hover:border-slate-300"
-                }`}
-              >{skill}</button>
+                className={`${styles.chip} ${skills.includes(skill) ? styles.chipActiveCompany : ""}`}>
+                {skill}
+              </button>
             ))}
           </div>
-          <div className="flex gap-2">
-            <input
-              type="text" value={customSkill} onChange={e => setCustomSkill(e.target.value)}
+          <div className={styles.customSkillRow}>
+            <input type="text" value={customSkill} onChange={e => setCustomSkill(e.target.value)}
               onKeyDown={e => e.key === "Enter" && (e.preventDefault(), addCustomSkill())}
-              placeholder="Agregar habilidad..."
-              className="flex-1 border border-slate-200 rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400"
-            />
-            <button type="button" onClick={addCustomSkill}
-              className="px-4 py-2 bg-slate-100 rounded-lg text-sm text-slate-600 hover:bg-slate-200">
+              placeholder="Agregar habilidad..." className={styles.input} />
+            <button type="button" onClick={addCustomSkill} className={styles.btnGhost}>
               Agregar
             </button>
           </div>
         </div>
-        <div>
-          <label className="text-sm text-slate-600 mb-1 block">Modalidad</label>
-          <div className="flex gap-3">
+
+        <div className={styles.field}>
+          <label className={styles.label}>Modalidad</label>
+          <div className={styles.modalityGroup}>
             {["presencial", "hibrido", "remoto"].map(m => (
               <button key={m} type="button" onClick={() => setModality(m)}
-                className={`flex-1 py-2 rounded-lg text-sm border transition-all capitalize ${
-                  modality === m
-                    ? "border-purple-500 bg-purple-50 text-purple-700 font-medium"
-                    : "border-slate-200 text-slate-500 hover:border-slate-300"
-                }`}
-              >{m}</button>
+                className={`${styles.modalityBtn} ${modality === m ? styles.modalityBtnActiveCompany : ""}`}>
+                {m}
+              </button>
             ))}
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-sm text-slate-600 mb-1 block">Ubicación</label>
-            <input
-              type="text" value={location} onChange={e => setLocation(e.target.value)}
-              placeholder="Ej: Ciudad de México"
-              className="w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-slate-400"
-            />
+
+        <div className={styles.formGrid2}>
+          <div className={styles.field}>
+            <label className={styles.label}>Ubicación</label>
+            <input type="text" value={location} onChange={e => setLocation(e.target.value)}
+              placeholder="Ej: Ciudad de México" className={styles.input} />
           </div>
-          <div>
-            <label className="text-sm text-slate-600 mb-1 block">Rango salarial</label>
-            <input
-              type="text" value={salaryRange} onChange={e => setSalaryRange(e.target.value)}
-              placeholder="Ej: $20,000 - $30,000"
-              className="w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-slate-400"
-            />
+          <div className={styles.field}>
+            <label className={styles.label}>Rango salarial mensual</label>
+            <input type="text" value={salaryRange} onChange={e => setSalaryRange(e.target.value)}
+              placeholder="Ej: $20,000 - $30,000" className={styles.input} />
           </div>
         </div>
-        {error && <p className="text-sm text-red-500 bg-red-50 px-4 py-2 rounded-lg">{error}</p>}
-        <button
-          type="submit" disabled={loading || !modality}
-          className="w-full py-2.5 rounded-lg text-sm font-medium text-white bg-purple-600 hover:opacity-90 disabled:opacity-50"
-        >
+
+        {error && <p className={styles.error}>{error}</p>}
+
+        <button type="submit" disabled={loading || !modality} className={`${styles.btnCompany} ${styles.btnFullWidth}`}>
           {loading ? "Publicando..." : "Publicar vacante"}
         </button>
       </form>
@@ -240,11 +229,8 @@ function PostingsSection() {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
-      const { data } = await supabase
-        .from("job_postings")
-        .select("*")
-        .eq("company_id", user.id)
-        .order("created_at", { ascending: false })
+      const { data } = await supabase.from("job_postings").select("*")
+        .eq("company_id", user.id).order("created_at", { ascending: false })
       setPostings(data || [])
       setLoading(false)
     }
@@ -270,75 +256,54 @@ function PostingsSection() {
     setPostings(prev => prev.map(p => p.id === id ? { ...p, active: !current } : p))
   }
 
-  if (loading) return <div className="text-center py-16 text-slate-400 text-sm">Cargando...</div>
-
-  if (postings.length === 0) return (
-    <div className="text-center py-16 text-slate-400 text-sm">
-      No has publicado ninguna vacante todavía.
-    </div>
-  )
+  if (loading) return <p className={styles.emptyStateLg}>Cargando...</p>
+  if (postings.length === 0) return <p className={styles.emptyStateLg}>No has publicado ninguna vacante todavía.</p>
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className={styles.stack}>
       {postings.map(posting => (
-        <div key={posting.id} className="bg-white rounded-2xl border border-slate-200 p-5">
-          <div className="flex items-start justify-between gap-4">
+        <div key={posting.id} className={styles.card}>
+          <div className={styles.itemRow}>
             <div>
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-semibold text-slate-800">{posting.title}</h3>
-                <span className={`text-xs px-2 py-0.5 rounded-full ${
-                  posting.active
-                    ? "bg-teal-50 text-teal-700"
-                    : "bg-slate-100 text-slate-500"
-                }`}>
+              <div className={styles.itemTitleRow}>
+                <h3 className={styles.itemTitle}>{posting.title}</h3>
+                <span className={posting.active ? styles.badgeActive : styles.badgeInactive}>
                   {posting.active ? "Activa" : "Inactiva"}
                 </span>
               </div>
-              <p className="text-sm text-slate-500">
-                {posting.modality} · {posting.location}
-                {posting.salary_range && ` · ${posting.salary_range}`}
+              <p className={styles.itemSub}>
+                {posting.modality} · {posting.location}{posting.salary_range && ` · ${posting.salary_range}`}
               </p>
               {posting.required_skills?.length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {posting.required_skills.map((s: string) => (
-                    <span key={s} className="text-xs px-2 py-0.5 bg-purple-50 text-purple-700 rounded-full">
-                      {s}
-                    </span>
+                <div className={styles.chipsGroup} style={{ marginTop: "0.5rem" }}>
+                  {posting.required_skills.map(s => (
+                    <span key={s} className={styles.chipStatic}>{s}</span>
                   ))}
                 </div>
               )}
             </div>
-            <div className="flex flex-col gap-2 items-end">
-              <button
-                onClick={() => searchCandidates(posting)}
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg text-xs font-medium hover:opacity-90 whitespace-nowrap"
-              >
+            <div className={styles.actionsCol}>
+              <button onClick={() => searchCandidates(posting)} className={`${styles.btnCompany} ${styles.btnSm}`}>
                 Buscar candidatos
               </button>
-              <button
-                onClick={() => toggleActive(posting.id, posting.active)}
-                className="text-xs text-slate-400 hover:text-slate-600"
-              >
+              <button onClick={() => toggleActive(posting.id, posting.active)} className={styles.linkBtn}>
                 {posting.active ? "Desactivar" : "Activar"}
               </button>
             </div>
           </div>
 
           {selectedPosting?.id === posting.id && (
-            <div className="mt-4 pt-4 border-t border-slate-100">
+            <div className={styles.divider}>
               {searching ? (
-                <p className="text-sm text-slate-400">Buscando candidatos compatibles...</p>
+                <p className={styles.emptyState}>Buscando candidatos compatibles...</p>
               ) : candidates.length === 0 ? (
-                <p className="text-sm text-slate-400">No se encontraron candidatos compatibles aún.</p>
+                <p className={styles.emptyState}>No se encontraron candidatos compatibles aún.</p>
               ) : (
-                <div className="flex flex-col gap-3">
-                  <p className="text-sm font-medium text-slate-700">
+                <div className={styles.stack}>
+                  <p className={styles.itemSub} style={{ fontWeight: 500, color: "#334155" }}>
                     {candidates.length} candidato{candidates.length !== 1 ? "s" : ""} compatible{candidates.length !== 1 ? "s" : ""}
                   </p>
-                  {/* Aquí se muestra una lista simple de candidatos compatibles*/}
-                  {candidates.map((c: Candidate, i: number) => (
-                    <CandidateCard key={i} candidate={c} />
-                  ))}
+                  {candidates.map((c, i) => <CandidateCard key={i} candidate={c} />)}
                 </div>
               )}
             </div>
@@ -349,7 +314,7 @@ function PostingsSection() {
   )
 }
 
-function AnalyzeSection({ profile }: { profile: CompanyProfile | null }){
+function AnalyzeSection({ profile }: { profile: CompanyProfile | null }) {
   const [cvFiles, setCvFiles] = useState<CVFile[]>([])
   const [requirements, setRequirements] = useState("")
   const [analysis, setAnalysis] = useState("")
@@ -360,7 +325,7 @@ function AnalyzeSection({ profile }: { profile: CompanyProfile | null }){
     const files = Array.from(e.target.files || [])
     if (!files.length) return
     setUploading(true)
-    const parsed: { name: string; text: string }[] = []
+    const parsed: CVFile[] = []
     for (const file of files) {
       const formData = new FormData()
       formData.append("file", file)
@@ -387,70 +352,60 @@ function AnalyzeSection({ profile }: { profile: CompanyProfile | null }){
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="bg-white rounded-2xl border border-slate-200 p-6">
-        <h2 className="font-semibold text-slate-800 mb-1">Subir CVs externos</h2>
-        <p className="text-sm text-slate-500 mb-4">Sube CVs de candidatos externos para que la IA elija al mejor</p>
-        <label className="cursor-pointer flex items-center justify-center gap-2 border-2 border-dashed border-slate-200 rounded-xl p-8 hover:border-purple-300 hover:bg-purple-50 transition-all">
-          <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div className={styles.stack}>
+      <div className={styles.card}>
+        <p className={styles.cardTitle}>Subir CVs externos</p>
+        <p className={styles.cardSub}>Sube CVs de candidatos externos para que la IA elija al mejor</p>
+        <label className={styles.uploadDashed}>
+          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
           </svg>
-          <span className="text-sm text-slate-500">
-            {uploading ? "Procesando CVs..." : "Haz clic para subir CVs (PDF)"}
-          </span>
+          <span>{uploading ? "Procesando CVs..." : "Haz clic para subir CVs (PDF)"}</span>
           <input type="file" accept=".pdf" multiple className="hidden" onChange={handleUploadCVs} disabled={uploading} />
         </label>
         {cvFiles.length > 0 && (
-          <div className="mt-4 flex flex-col gap-2">
+          <div className={styles.stack} style={{ marginTop: "1rem", gap: "0.5rem" }}>
             {cvFiles.map((cv, i) => (
-              <div key={i} className="flex items-center justify-between bg-slate-50 rounded-lg px-4 py-2.5">
-                <span className="text-sm text-slate-700">{cv.name}</span>
-                <button onClick={() => setCvFiles(prev => prev.filter((_, j) => j !== i))}
-                  className="text-xs text-slate-400 hover:text-red-500">Eliminar</button>
+              <div key={i} className={styles.fileRow}>
+                <span className={styles.fileName}>{cv.name}</span>
+                <button onClick={() => setCvFiles(prev => prev.filter((_, j) => j !== i))} className={styles.linkBtn}>
+                  Eliminar
+                </button>
               </div>
             ))}
           </div>
         )}
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 p-6">
-        <h2 className="font-semibold text-slate-800 mb-1">Requerimientos</h2>
-        <textarea
-          value={requirements} onChange={e => setRequirements(e.target.value)}
-          placeholder="Describe el puesto y los requisitos..."
-          rows={4}
-          className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-slate-400 resize-none mt-3"
-        />
+      <div className={styles.card}>
+        <p className={styles.cardTitle}>Requerimientos</p>
+        <textarea value={requirements} onChange={e => setRequirements(e.target.value)}
+          placeholder="Describe el puesto y los requisitos..." rows={4} className={styles.textarea} />
       </div>
 
-      <button
-        onClick={analyzeCanditates}
-        disabled={loading || !cvFiles.length || !requirements.trim()}
-        className="w-full py-3 rounded-xl text-sm font-medium text-white bg-purple-600 hover:opacity-90 disabled:opacity-50"
-      >
+      <button onClick={analyzeCanditates} disabled={loading || !cvFiles.length || !requirements.trim()}
+        className={`${styles.btnCompany} ${styles.btnFullWidth}`}>
         {loading ? "Analizando..." : `Analizar ${cvFiles.length} candidato${cvFiles.length !== 1 ? "s" : ""}`}
       </button>
 
       {analysis && (
-        <div className="bg-white rounded-2xl border border-slate-200 p-6">
-          <h2 className="font-semibold text-slate-800 mb-4">Análisis de la IA</h2>
-          <div className="text-slate-700">
+        <div className={styles.card}>
+          <p className={styles.cardTitle}>Análisis de la IA</p>
+          <div>
             <ReactMarkdown components={{
-              p: ({children}) => <p className="mb-3 last:mb-0">{children}</p>,
-              strong: ({children}) => <strong className="font-semibold text-slate-800">{children}</strong>,
-              ul: ({children}) => <ul className="list-disc pl-5 mb-3 space-y-1">{children}</ul>,
-              ol: ({children}) => <ol className="list-decimal pl-5 mb-3 space-y-1">{children}</ol>,
+              p: ({children}) => <p className={styles.mdP}>{children}</p>,
+              strong: ({children}) => <strong className={styles.mdStrong}>{children}</strong>,
+              ul: ({children}) => <ul className={styles.mdUl}>{children}</ul>,
+              ol: ({children}) => <ol className={styles.mdOl}>{children}</ol>,
               li: ({children}) => <li>{children}</li>,
-              h2: ({children}) => <h2 className="font-semibold text-base mt-4 mb-2">{children}</h2>,
-              h3: ({children}) => <h3 className="font-semibold text-sm mt-3 mb-1">{children}</h3>,
+              h2: ({children}) => <h2 className={styles.mdH2}>{children}</h2>,
+              h3: ({children}) => <h3 className={styles.mdH3}>{children}</h3>,
             }}>{analysis}</ReactMarkdown>
           </div>
         </div>
       )}
     </div>
   )
-
-  
 }
 
 function CandidateCard({ candidate }: { candidate: Candidate }) {
@@ -458,62 +413,76 @@ function CandidateCard({ candidate }: { candidate: Candidate }) {
 
   return (
     <>
-      <div className="bg-slate-50 rounded-xl p-4">
-        <div className="flex items-center justify-between">
+      <div className={styles.previewBox}>
+        <div className={styles.itemRow}>
           <div>
-            <p className="text-sm font-medium text-slate-800">{candidate.full_name}</p>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className={styles.itemTitle} style={{ fontSize: "0.875rem" }}>{candidate.full_name}</p>
+            <p className={styles.itemSub} style={{ fontSize: "0.75rem", marginTop: "0.25rem" }}>
               {candidate.desired_position} · {candidate.work_modality} · {candidate.location}
             </p>
             {candidate.skills?.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-2">
-                {candidate.skills.slice(0, 5).map((s: string) => (
-                  <span key={s} className="text-xs px-2 py-0.5 bg-white border border-slate-200 text-slate-600 rounded-full">
-                    {s}
-                  </span>
+              <div className={styles.chipsGroup} style={{ marginTop: "0.5rem" }}>
+                {candidate.skills.slice(0, 5).map(s => (
+                  <span key={s} className={styles.chip}>{s}</span>
                 ))}
               </div>
             )}
           </div>
-          <div className="flex flex-col items-end gap-2 ml-4">
+          <div className={styles.actionsCol}>
             {candidate.match_score && (
-              <span className="text-sm font-semibold text-purple-600">
-                {candidate.match_score}% match
-              </span>
+              <span className={styles.matchCompany}>{candidate.match_score}% match</span>
             )}
-            <button
-              onClick={() => setShowModal(true)}
-              className="px-3 py-1.5 bg-purple-600 text-white rounded-lg text-xs font-medium hover:opacity-90"
-            >
+            <button onClick={() => setShowModal(true)} className={`${styles.btnCompany} ${styles.btnXs}`}>
               Ver CV
             </button>
           </div>
         </div>
       </div>
-
-      {showModal && (
-        <CVModal candidate={candidate} onClose={() => setShowModal(false)} />
-      )}
+      {showModal && <CVModal candidate={candidate} onClose={() => setShowModal(false)} />}
     </>
   )
 }
 
+//funcion para formatear el texto del CV como markdown, agregando saltos de linea entre secciones y resaltando títulos comunes como "Experiencia", "Educación", "Habilidades", etc.
+function formatCVAsMarkdown(cvText: string): string {
+    const lines = cvText.split("\n").filter(l => l.trim() !== "")
+    let result = ""
+
+    const sectionKeywords = [
+      "perfil", "experiencia", "educación", "educacion", "habilidades",
+      "competencias", "skills", "idiomas", "certificaciones", "proyectos",
+      "formación", "formacion", "cursos", "logros", "referencias"
+    ]
+
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (!trimmed) continue
+
+      const isSection = sectionKeywords.some(k =>
+        trimmed.toLowerCase().startsWith(k) && trimmed.length < 40
+      )
+
+      const isName = lines.indexOf(line) === 0
+
+      if (isName) {
+        result += `## ${trimmed}\n\n`
+      } else if (isSection) {
+        result += `\n### ${trimmed}\n\n`
+      } else if (trimmed.startsWith("•") || trimmed.startsWith("-") || trimmed.startsWith("*")) {
+        result += `- ${trimmed.replace(/^[•\-*]\s*/, "")}\n`
+      } else if (trimmed.match(/^\d{4}/)) {
+        result += `**${trimmed}**\n\n`
+      } else {
+        result += `${trimmed}\n\n`
+      }
+    }
+
+    return result
+  }
+
 function CVModal({ candidate, onClose }: { candidate: Candidate; onClose: () => void }) {
   function downloadCV() {
-    const content = `CV - ${candidate.full_name}
-${"=".repeat(40)}
-Puesto deseado: ${candidate.desired_position}
-Área: ${candidate.desired_area}
-Modalidad: ${candidate.work_modality}
-Ubicación: ${candidate.location}
-Habilidades: ${candidate.skills?.join(", ")}
-
-${"=".repeat(40)}
-CV COMPLETO
-${"=".repeat(40)}
-
-${candidate.cv_text || "No disponible"}`
-
+    const content = `CV - ${candidate.full_name}\n${"=".repeat(40)}\nPuesto deseado: ${candidate.desired_position}\nÁrea: ${candidate.desired_area}\nModalidad: ${candidate.work_modality}\nUbicación: ${candidate.location}\nHabilidades: ${candidate.skills?.join(", ")}\n\n${"=".repeat(40)}\nCV COMPLETO\n${"=".repeat(40)}\n\n${candidate.cv_text || "No disponible"}`
     const blob = new Blob([content], { type: "text/plain;charset=utf-8" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
@@ -524,35 +493,27 @@ ${candidate.cv_text || "No disponible"}`
   }
 
   return (
-    <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white rounded-2xl w-full max-w-2xl shadow-xl max-h-[90vh] flex flex-col"
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="p-6 border-b border-slate-100 flex items-start justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-800">{candidate.full_name}</h2>
-            <p className="text-sm text-slate-500 mt-0.5">
-              {candidate.desired_position} · {candidate.work_modality} · {candidate.location}
-            </p>
-            {candidate.match_score && (
-              <span className="text-xs font-medium px-2 py-0.5 bg-purple-50 text-purple-700 rounded-full mt-2 inline-block">
-                {candidate.match_score}% compatible
-              </span>
-            )}
+    <div className={styles.modalOverlay} onClick={onClose}>
+      <div className={styles.modalBoxLg} onClick={e => e.stopPropagation()}>
+        <div className={styles.modalHeader}>
+          <div className={styles.modalHeaderRowTop}>
+            <div>
+              <h2 className={styles.modalTitle}>{candidate.full_name}</h2>
+              <p className={styles.modalSub}>
+                {candidate.desired_position} · {candidate.work_modality} · {candidate.location}
+              </p>
+              {candidate.match_score && (
+                <span className={`${styles.chip} ${styles.chipActiveCompany}`} style={{ marginTop: "0.5rem", display: "inline-block" }}>
+                  {candidate.match_score}% compatible
+                </span>
+              )}
+            </div>
+            <button onClick={onClose} className={styles.modalClose}>×</button>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xl leading-none ml-4">
-            ×
-          </button>
         </div>
 
-        {/* Info básica */}
-        <div className="px-6 py-4 border-b border-slate-100">
-          <div className="grid grid-cols-2 gap-3">
+        <div className={styles.modalBody}>
+          <div className={styles.filterGrid}>
             {[
               { label: "Área", value: candidate.desired_area },
               { label: "Modalidad", value: candidate.work_modality },
@@ -560,32 +521,37 @@ ${candidate.cv_text || "No disponible"}`
               { label: "Habilidades", value: candidate.skills?.join(", ") },
             ].map(item => item.value && (
               <div key={item.label}>
-                <p className="text-xs text-slate-400">{item.label}</p>
-                <p className="text-sm text-slate-700 mt-0.5">{item.value}</p>
+                <p className={styles.labelSm}>{item.label}</p>
+                <p className={styles.detailValue} style={{ marginTop: "0.25rem" }}>{item.value}</p>
               </div>
             ))}
           </div>
         </div>
 
-        {/* CV texto */}
-        <div className="flex-1 overflow-y-auto p-6">
-          <p className="text-xs font-medium text-slate-500 mb-3">CV completo</p>
+        <div className={styles.modalBodyScroll}>
+          <p className={styles.labelSm} style={{ marginBottom: "0.75rem" }}>CV completo</p>
           {candidate.cv_text ? (
-            <pre className="text-sm text-slate-700 whitespace-pre-wrap font-sans leading-relaxed">
-              {candidate.cv_text}
-            </pre>
+            <ReactMarkdown
+              components={{
+                p: ({children}) => <p style={{ fontSize: "13px", color: "#475569", marginBottom: "8px" }}>{children}</p>,
+                strong: ({children}) => <strong style={{ fontWeight: 600, color: "#1e293b" }}>{children}</strong>,
+                h2: ({children}) => <h2 style={{ fontSize: "15px", fontWeight: 700, color: "#1e293b", marginTop: "16px", marginBottom: "8px", paddingBottom: "4px", borderBottom: "1px solid #f1f5f9" }}>{children}</h2>,
+                h3: ({children}) => <h3 style={{ fontSize: "13px", fontWeight: 600, color: "#334155", marginTop: "12px", marginBottom: "6px", paddingBottom: "4px", borderBottom: "1px solid #f1f5f9" }}>{children}</h3>,
+                ul: ({children}) => <ul style={{ paddingLeft: "16px", marginBottom: "8px" }}>{children}</ul>,
+                li: ({children}) => <li style={{ fontSize: "13px", color: "#475569", marginBottom: "4px" }}>{children}</li>,
+                hr: () => <hr style={{ border: "none", borderTop: "1px solid #f1f5f9", margin: "12px 0" }} />,
+              }}
+            >
+              {formatCVAsMarkdown(candidate.cv_text)}
+            </ReactMarkdown>
           ) : (
-            <p className="text-sm text-slate-400">El candidato no ha subido su CV.</p>
+            <p className={styles.emptyState} style={{ padding: 0 }}>El candidato no ha subido su CV.</p>
           )}
         </div>
 
-        {/* Footer */}
-        <div className="p-6 border-t border-slate-100">
-          <button
-            onClick={downloadCV}
-            className="w-full py-2.5 rounded-lg text-sm font-medium text-white bg-purple-600 hover:opacity-90 flex items-center justify-center gap-2"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className={styles.modalFooter}>
+          <button onClick={downloadCV} className={`${styles.btnCompany} ${styles.btnFullWidth} ${styles.btnIconRow}`}>
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
             </svg>
             Descargar CV

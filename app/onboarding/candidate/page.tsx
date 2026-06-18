@@ -7,9 +7,13 @@ import styles from "../onboarding.module.css"
 
 
 const SKILLS_SUGERIDAS = [
-  "JavaScript", "Python", "React", "Node.js", "SQL",
-  "Excel", "Diseño gráfico", "Marketing digital", "Ventas",
-  "Atención al cliente", "Gestión de proyectos", "inglés"
+  "Microsoft Office", "Excel avanzado", "Trabajo en equipo",
+  "Comunicación efectiva", "Liderazgo", "Gestión de proyectos",
+  "Atención al cliente", "Ventas", "Negociación",
+  "Inglés", "Francés", "Análisis de datos",
+  "Redes sociales", "Marketing digital", "Contabilidad",
+  "Recursos humanos", "Logística", "Diseño gráfico",
+  "Resolución de problemas", "Trabajo bajo presión"
 ]
 
 export default function CandidateOnboarding() {
@@ -80,7 +84,7 @@ return (
         <div className={styles.field}>
           <label className={styles.label}>Puesto deseado</label>
           <input type="text" value={position} onChange={e => setPosition(e.target.value)}
-            placeholder="Ej: Desarrollador frontend, Diseñador UX" required className={styles.input} />
+            placeholder="Ej: Administrador" required className={styles.input} />
         </div>
 
         <div className={styles.field}>
