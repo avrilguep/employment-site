@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+// @ts-ignore
 import pdfParse from "pdf-parse-fork"
 
 export async function POST(req: NextRequest) {
