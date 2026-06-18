@@ -140,3 +140,17 @@
   text-align: center;
   margin: 0;
 }
+
+
+@media (max-width: 640px) {
+  .logo {
+    width: 260px;
+  }
+  .card {
+    padding: 2rem 1.5rem;
+  }
+  .grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+}

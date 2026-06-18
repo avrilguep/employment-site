@@ -1024,3 +1024,79 @@
   justify-content: center;
   gap: 0.5rem;
 }
+
+@media (max-width: 640px) {
+  .content {
+    padding: 1rem 0.75rem;
+  }
+  .navbar {
+    padding: 0.75rem 1rem;
+  }
+  .navTitle {
+    font-size: 0.875rem;
+  }
+  .tabs {
+    gap: 0.375rem;
+  }
+  .tab {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.75rem;
+  }
+  .chatCard {
+    height: calc(100vh - 220px);
+    min-height: 400px;
+  }
+  .itemRow {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .actionsCol {
+    flex-direction: row;
+    align-items: center;
+    width: 100%;
+    justify-content: space-between;
+  }
+  .lockedRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  .lockedBox {
+    width: 100%;
+  }
+  .btnSm {
+    width: 100%;
+    text-align: center;
+  }
+  .modalityGroup {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .planGrid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  .modalBox {
+    max-width: 100%;
+    border-radius: 1rem;
+  }
+  .modalBoxLg {
+    max-width: 100%;
+    max-height: 95vh;
+  }
+  .modalHeader,
+  .modalBody,
+  .modalFooter,
+  .modalBodyScroll {
+    padding: 1rem;
+  }
+  .formGrid2 {
+    grid-template-columns: 1fr;
+  }
+  .welcomeTitle {
+    font-size: 1.25rem;
+  }
+  .cardTitle {
+    font-size: 0.95rem;
+  }
+}

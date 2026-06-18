@@ -259,3 +259,24 @@
 .btnCompany {
   background: linear-gradient(90deg, #3c81f1);
 }
+
+@media (max-width: 640px) {
+  .main {
+    padding: 1rem;
+    align-items: flex-start;
+  }
+  .card {
+    padding: 1.5rem 1rem;
+    border-radius: 1rem;
+  }
+  .title {
+    font-size: 1.25rem;
+  }
+  .modalityGroup {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .modalityBtn {
+    width: 100%;
+  }
+}

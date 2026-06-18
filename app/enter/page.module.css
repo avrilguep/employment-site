@@ -214,3 +214,30 @@
 .logo {
   width: 12rem;
 }
+
+@media (max-width: 640px) {
+  .main {
+    padding: 1.5rem 1rem;
+    justify-content: center;
+  }
+  .subtitle {
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+  }
+  .layout {
+    padding-left: 0;
+    align-items: center;
+  }
+  .leftCol {
+    max-width: 100%;
+  }
+  .welcome {
+    font-size: 1rem;
+    padding-left: 0;
+    align-self: center;
+    text-align: center;
+  }
+  .card {
+    padding: 1.5rem 1.25rem;
+  }
+}
