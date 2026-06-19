@@ -3,9 +3,11 @@ import { NextRequest, NextResponse } from "next/server"
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-interface Message {
-  role: "user" | "assistant"
-  content: string
+interface Filters {
+  position: string
+  location: string
+  modality: string
+  company_type: string
 }
 
 interface Profile {
@@ -23,66 +25,85 @@ interface ContentBlock {
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages, cvText, profile }: {
-      messages: Message[]
+    const { filters, cvText, profile }: {
+      filters: Filters
       cvText: string
       profile: Profile
     } = await req.json()
 
-    const systemPrompt = `Eres un asistente experto en búsqueda de empleo. Tu trabajo es buscar vacantes reales en internet para el candidato.
+    const systemPrompt = `Eres un asistente experto en búsqueda de empleo en México y Latinoamérica.
+Tu tarea es buscar vacantes reales en internet y devolverlas en formato JSON estructurado.
 
-${profile ? `Perfil del candidato:
-- Puesto deseado: ${profile.desired_position}
-- Área: ${profile.desired_area}
-- Modalidad: ${profile.work_modality}
-- Ubicación: ${profile.location}
-- Habilidades: ${profile.skills?.join(", ")}` : ""}
+${cvText ? `CV del candidato:\n${cvText.slice(0, 800)}` : ""}
+${profile?.skills ? `Habilidades del candidato: ${profile.skills.join(", ")}` : ""}
 
-${cvText ? `CV del candidato:\n${cvText.slice(0, 1500)}` : ""}
+INSTRUCCIONES:
+1. Busca vacantes reales y actuales en internet para el puesto y ubicación indicados
+2. Busca en plataformas como OCC Mundial, Computrabajo, Indeed México, LinkedIn, Bumeran, Jobby
+3. Devuelve ÚNICAMENTE un JSON válido con este formato exacto, sin texto adicional:
+{
+  "jobs": [
+    {
+      "title": "Nombre del puesto",
+      "company": "Nombre de la empresa",
+      "location": "Ciudad, Estado",
+      "salary": "Rango salarial o null",
+      "description": "Descripción breve de 1-2 líneas",
+      "url": "URL directa a la vacante",
+      "source": "Nombre de la plataforma",
+      "modality": "presencial/híbrido/remoto o null"
+    }
+  ]
+}
+Devuelve máximo 6 vacantes reales con URLs válidas. Si no encuentras vacantes reales, devuelve {"jobs": []}`
 
-Cuando el candidato te diga qué busca:
-1. Usa la herramienta de búsqueda web para encontrar vacantes reales y actuales
-2. Presenta cada resultado con este formato exacto:
-
-**[Puesto]** — [Empresa]
-📍 [Ubicación] · [Modalidad si se sabe]
-🔗 [Link directo](url)
-_Breve descripción del vacante_
-
-3. Muestra máximo 6 resultados
-4. Nunca uses tablas ni pipes (|)
-5. Al final agrega una sección "💡 También puedes buscar en:" con 3 plataformas relevantes como links
-6. Responde siempre en español
-7. Si no encuentras vacantes específicas, busca plataformas de empleo relevantes
-8. Incluye links clickeables a las vacantes encontradas`
+    const userMessage = `Busca vacantes de: ${filters.position}
+Ubicación: ${filters.location || "México"}
+${filters.modality ? `Modalidad: ${filters.modality}` : ""}
+${filters.company_type ? `Tipo de empresa: ${filters.company_type}` : ""}`
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
-      max_tokens: 1500,
+      max_tokens: 2000,
       system: systemPrompt,
-      tools: [{ 
-        type: "web_search_20250305", 
-        name: "web_search" }] as Parameters<typeof anthropic.messages.create>[0]["tools"]
-        ,
-        messages: messages.map((m: Message) => ({
-        role: m.role,
-        content: m.content
-      }))
+      tools: [
+        {
+          type: "web_search_20250305" as "web_search_20250305",
+          name: "web_search"
+        }
+      ],
+      messages: [{ role: "user", content: userMessage }]
     })
 
-    const reply = response.content
-      .filter((block: ContentBlock) => block.type === "text")
-      .map((block: ContentBlock) => block.text ?? "")
-      .join("\n")
+    const textBlocks = response.content.filter(
+      (block: ContentBlock) => block.type === "text"
+    )
 
-    return NextResponse.json({ reply })
+    let jobs: object[] = []
+
+    for (const block of textBlocks) {
+      if (block.type === "text" && block.text) {
+        try {
+          const clean = block.text.replace(/```json|```/g, "").trim()
+          const jsonMatch = clean.match(/\{[\s\S]*\}/)
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0])
+            if (parsed.jobs && Array.isArray(parsed.jobs)) {
+              jobs = parsed.jobs
+              break
+            }
+          }
+        } catch {
+          continue
+        }
+      }
+    }
+
+    return NextResponse.json({ jobs })
 
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Error desconocido"
     console.error("External search error:", message)
-    return NextResponse.json(
-      { reply: "Hubo un error al buscar vacantes. Intenta de nuevo." },
-      { status: 500 }
-    )
+    return NextResponse.json({ jobs: [] }, { status: 500 })
   }
 }

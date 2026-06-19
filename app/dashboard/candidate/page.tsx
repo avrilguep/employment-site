@@ -483,16 +483,17 @@ function PublicProfileSection({ profile }: { profile: CandidateProfile | null })
 }
 
 function ExternalSearchSection({ profile }: { profile: CandidateProfile | null }) {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: "assistant",
-      content: "Hola! Soy tu buscador de vacantes externas. Buscaré en internet empleos reales para ti. Puedes decirme qué tipo de trabajo buscas, subir tu CV para que lo analice, o ambas cosas. ¿Qué estás buscando?"
-    }
-  ])
-  const [input, setInput] = useState("")
+  const [jobs, setJobs] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
+  const [searched, setSearched] = useState(false)
   const [cvText, setCvText] = useState("")
   const [uploading, setUploading] = useState(false)
+  const [filters, setFilters] = useState({
+    position: profile?.desired_position || "",
+    location: profile?.location || "",
+    modality: profile?.work_modality || "",
+    company_type: ""
+  })
 
   async function handleUploadCV(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -502,38 +503,21 @@ function ExternalSearchSection({ profile }: { profile: CandidateProfile | null }
     formData.append("file", file)
     const res = await fetch("/api/parse-cv", { method: "POST", body: formData })
     const data = await res.json()
-    if (data.text) {
-      setCvText(data.text)
-      setMessages(prev => [...prev, {
-        role: "assistant",
-        content: "CV cargado. Ahora puedo buscar vacantes externas basándome en tu experiencia. ¿Qué tipo de empleo buscas o en qué ciudad?"
-      }])
-    }
+    if (data.text) setCvText(data.text)
     setUploading(false)
   }
 
-  async function sendMessage() {
-    if (!input.trim() || loading) return
-    const newMessages: Message[] = [...messages, { role: "user", content: input }]
-    setMessages(newMessages)
-    setInput("")
+  async function searchJobs() {
     setLoading(true)
-
+    setSearched(true)
+    setJobs([])
     const res = await fetch("/api/external-search", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        messages: newMessages,
-        cvText,
-        profile
-      })
+      body: JSON.stringify({ filters, cvText, profile })
     })
-
     const data = await res.json()
-    setMessages(prev => [...prev, {
-      role: "assistant",
-      content: data.reply || "No pude obtener resultados. Intenta de nuevo."
-    }])
+    setJobs(data.jobs || [])
     setLoading(false)
   }
 
@@ -542,73 +526,143 @@ function ExternalSearchSection({ profile }: { profile: CandidateProfile | null }
 
       {/* Aviso */}
       <div className={styles.card} style={{ borderLeft: "3px solid #f59e0b" }}>
-        <p className={styles.cardTitle} style={{ color: "#b45309" }}>Buscador externo</p>
-        <p className={styles.cardSub}>
-          Este buscador encuentra vacantes reales en internet usando IA. Los resultados provienen de búsquedas web en tiempo real. Ten en cuenta que no todas las empresas publican sus vacantes en línea.
+        <p className={styles.cardTitle} style={{ color: "#b45309", marginBottom: "0.25rem" }}>
+          Buscador externo
+        </p>
+        <p className={styles.cardSub} style={{ marginBottom: 0 }}>
+          Este buscador encuentra vacantes reales en internet usando IA. Los resultados provienen de las búsquedas web en tiempo real, pueden variar según el contexto que le des a la IA (tu CV, tus filtros, tu perfil). Es recomendable subir tu CV para mejores resultados. <b>¡Ten en cuenta que no todas las empresas publican sus vacantes en línea!</b>
         </p>
       </div>
 
-      <div className={styles.chatCard}>
-        {/* Upload CV */}
-        <div className={styles.chatHeader}>
+      {/* Formulario */}
+      <div className={styles.card}>
+        <p className={styles.cardTitle}>¿Qué trabajo buscas?</p>
+
+        <div className={styles.filterGrid} style={{ marginBottom: "1rem" }}>
+          <div>
+            <label className={styles.labelSm}>Puesto</label>
+            <input
+              type="text"
+              value={filters.position}
+              onChange={e => setFilters(prev => ({ ...prev, position: e.target.value }))}
+              placeholder="Ej: Contador público, Diseñador"
+              className={styles.inputSm}
+            />
+          </div>
+          <div>
+            <label className={styles.labelSm}>Ubicación</label>
+            <input
+              type="text"
+              value={filters.location}
+              onChange={e => setFilters(prev => ({ ...prev, location: e.target.value }))}
+              placeholder="Ej: CDMX, Puebla, Monterrey"
+              className={styles.inputSm}
+            />
+          </div>
+          <div>
+            <label className={styles.labelSm}>Tipo de empresa (opcional)</label>
+            <input
+              type="text"
+              value={filters.company_type}
+              onChange={e => setFilters(prev => ({ ...prev, company_type: e.target.value }))}
+              placeholder="Ej: Startup, Despacho, Corporativo"
+              className={styles.inputSm}
+            />
+          </div>
+          <div>
+            <label className={styles.labelSm}>Modalidad</label>
+            <select
+              value={filters.modality}
+              onChange={e => setFilters(prev => ({ ...prev, modality: e.target.value }))}
+              className={styles.selectSm}
+            >
+              <option value="">Cualquiera</option>
+              <option value="presencial">Presencial</option>
+              <option value="hibrido">Híbrido</option>
+              <option value="remoto">Remoto</option>
+            </select>
+          </div>
+        </div>
+
+        {/* CV opcional */}
+        <div style={{ marginBottom: "1rem" }}>
+          <label className={styles.labelSm}>CV (opcional — mejora los resultados)</label>
           <label className={styles.uploadLabel}>
-            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
             </svg>
-            {uploading ? "Procesando..." : cvText ? "CV cargado ✓" : "Subir CV (opcional)"}
+            {uploading ? "Procesando..." : cvText ? "CV cargado ✓" : "Subir CV (PDF)"}
             <input type="file" accept=".pdf" className="hidden" onChange={handleUploadCV} disabled={uploading} />
           </label>
-          {cvText && <span className={styles.hint}>La IA usará tu CV para buscar mejores coincidencias</span>}
         </div>
 
-        {/* Mensajes */}
-        <div className={styles.chatMessages}>
-          {messages.map((m, i) => (
-            <div key={i} className={m.role === "user" ? styles.chatRowUser : styles.chatRowAssistant}>
-              <div className={m.role === "user" ? styles.bubbleUser : styles.bubbleAssistant}>
-                {m.role === "user" ? m.content : (
-                  <ReactMarkdown components={{
-                    p: ({children}) => <p className={styles.mdP}>{children}</p>,
-                    strong: ({children}) => <strong className={styles.mdStrong}>{children}</strong>,
-                    ul: ({children}) => <ul className={styles.mdUl}>{children}</ul>,
-                    ol: ({children}) => <ol className={styles.mdOl}>{children}</ol>,
-                    li: ({children}) => <li>{children}</li>,
-                    h2: ({children}) => <h2 className={styles.mdH2}>{children}</h2>,
-                    h3: ({children}) => <h3 className={styles.mdH3}>{children}</h3>,
-                    a: ({href, children}) => (
-                      <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: "#0d9488", textDecoration: "underline" }}>
-                        {children}
-                      </a>
-                    ),
-                  }}>
-                    {m.content}
-                  </ReactMarkdown>
-                )}
-              </div>
-            </div>
-          ))}
-          {loading && (
-            <div className={styles.chatRowAssistant}>
-              <div className={styles.bubbleTyping}>Buscando en internet...</div>
-            </div>
-          )}
-        </div>
-
-        {/* Input */}
-        <div className={styles.chatInputRow}>
-          <input
-            type="text"
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && sendMessage()}
-            placeholder="Ej: Busco trabajo de atención a clientes en CDMX remoto..."
-            className={styles.chatInput}
-          />
-          <button onClick={sendMessage} disabled={loading} className={styles.btnCandidate}>
-            Buscar
-          </button>
-        </div>
+        <button
+          onClick={searchJobs}
+          disabled={loading || !filters.position.trim()}
+          className={`${styles.btnCandidate} ${styles.btnFullWidth}`}
+        >
+          {loading ? "Buscando en internet..." : "Buscar vacantes externas"}
+        </button>
       </div>
+
+      {/* Estados */}
+      {!searched && (
+        <p className={styles.emptyState}>
+          Llena el puesto y presiona buscar para encontrar vacantes en internet
+        </p>
+      )}
+
+      {searched && loading && (
+        <div className={styles.card} style={{ textAlign: "center", padding: "2rem" }}>
+          <p style={{ fontSize: "0.875rem", color: "#64748b" }}>
+            La IA está buscando vacantes en internet...
+          </p>
+        </div>
+      )}
+
+      {searched && !loading && jobs.length === 0 && (
+        <p className={styles.emptyState}>
+          No se encontraron vacantes. Intenta con otros términos.
+        </p>
+      )}
+
+      {/* Resultados */}
+      {jobs.map((job, i) => (
+        <div key={i} className={`${styles.card} ${styles.cardHover}`}>
+          <div className={styles.itemTitleRow}>
+            <h3 className={styles.itemTitle}>{job.title}</h3>
+            {job.modality && (
+              <span className={styles.badgeActive}>{job.modality}</span>
+            )}
+          </div>
+          <p style={{ fontSize: "0.875rem", fontWeight: 600, color: "#334155", marginBottom: "0.25rem" }}>
+            {job.company}
+          </p>
+          <p className={styles.itemSub} style={{ marginBottom: "0.5rem" }}>
+            📍 {job.location}
+            {job.salary && ` · 💰 ${job.salary}`}
+          </p>
+          {job.description && (
+            <p style={{ fontSize: "0.8rem", color: "#64748b", marginBottom: "0.75rem", lineHeight: 1.5 }}>
+              {job.description}
+            </p>
+          )}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span style={{ fontSize: "0.7rem", color: "#94a3b8" }}>
+              vía {job.source}
+            </span>
+            <a
+              href={job.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.btnCandidate}
+              style={{ fontSize: "0.75rem", padding: "0.4rem 1rem", textDecoration: "none", borderRadius: "0.5rem" }}
+            >
+              Ver vacante
+            </a>
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
