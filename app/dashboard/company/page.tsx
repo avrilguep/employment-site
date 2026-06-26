@@ -28,13 +28,19 @@ export default function CompanyDashboard() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push("/"); return }
 
-    const { data } = await supabase
+    const { data: companyData } = await supabase
       .from("company_profiles")
-      .select("*, profiles(full_name)")
+      .select("*")
       .eq("id", user.id)
       .single()
 
-    setProfile({ ...data, full_name: data?.profiles?.full_name })
+    const { data: profileData } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", user.id)
+      .single()
+
+    setProfile({ ...companyData, full_name: profileData?.full_name })
   }
     loadProfile()
   }, [])
@@ -150,8 +156,14 @@ function PublishSection({ onPublished, companyName }: { onPublished: () => void,
 
       // Notificar candidatos compatibles
       const newPosting = {
-        ...{ title, description, required_skills: skills, modality, location, salary_range: salaryRange },
-        id: data?.id
+        title,
+        description,
+        required_skills: skills,
+        modality,
+        location,
+        salary_range: salaryRange,
+        id: data?.id,
+        company_id: user.id
       }
       fetch("/api/notify-candidates", {
         method: "POST",

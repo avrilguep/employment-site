@@ -27,6 +27,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ jobs: [] })
     }
 
+    const companyIds = [...new Set(jobs.map((j: any) => j.company_id))]
+    const { data: companies } = await supabase
+      .from("company_profiles")
+      .select("id, company_name, industry, phone, email")
+      .in("id", companyIds)
+
+    const companyMap = (companies || []).reduce((acc: any, c: any) => {
+      acc[c.id] = c
+      return acc
+    }, {})
+
     const prompt = `Eres un experto en reclutamiento. Analiza qué vacantes son compatibles con este candidato y asigna un score del 1 al 100.
 
 Candidato:
@@ -38,7 +49,7 @@ Candidato:
 ${cvText ? `\nCV: ${cvText.slice(0, 800)}` : ""}
 
 Vacantes:
-${jobs.map((j: any, i: number) => `[${i}] ${j.title} | ${j.company_profiles?.company_name || "Empresa"} | ${j.modality} | ${j.location} | Skills: ${j.required_skills?.join(", ")}`).join("\n")}
+${jobs.map((j: any, i: number) => `[${i}] ${j.title} | ${companyMap[j.company_id]?.company_name || "Empresa"} | ${j.modality} | ${j.location} | Skills: ${j.required_skills?.join(", ")}`).join("\n")}
 
 IMPORTANTE: Responde SOLO con este JSON, sin explicaciones ni markdown:
 {"matches":[{"index":0,"match_score":85}]}`
@@ -50,7 +61,6 @@ IMPORTANTE: Responde SOLO con este JSON, sin explicaciones ni markdown:
     })
 
     const text = response.content[0].type === "text" ? response.content[0].text.trim() : "{}"
-    console.log("IA response:", text)
 
     let parsed: any = { matches: [] }
     try {
@@ -61,12 +71,18 @@ IMPORTANTE: Responde SOLO con este JSON, sin explicaciones ni markdown:
 
     const result = (parsed.matches || [])
       .filter((m: any) => m.match_score >= 20)
-      .map((m: any) => ({
-        ...jobs[m.index],
-        company_name: "Empresa",
-        industry: "",
-        match_score: m.match_score
-      }))
+      .map((m: any) => {
+        const job = jobs[m.index]
+        const company = companyMap[job.company_id] || {}
+        return {
+          ...job,
+          company_name: company.company_name || "Empresa",
+          industry: company.industry || "",
+          phone: company.phone || null,
+          email: company.email || null,
+          match_score: m.match_score
+        }
+      })
 
     return NextResponse.json({ jobs: result })
 

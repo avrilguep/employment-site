@@ -4,6 +4,8 @@ export type CompanyProfile = {
   industry: string
   location: string
   full_name?: string
+  phone?: string
+  email?: string
 }
 
 export type Posting = {

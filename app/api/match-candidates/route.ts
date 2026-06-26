@@ -25,29 +25,24 @@ export async function POST(req: NextRequest) {
     const prompt = `Eres un experto en reclutamiento. Analiza qué candidatos son compatibles con esta vacante.
 
 Vacante: ${posting.title}
-Descripción: ${posting.description}
+Descripción: ${posting.description || "No especificada"}
 Habilidades requeridas: ${posting.required_skills?.join(", ")}
 Modalidad: ${posting.modality}
 Ubicación: ${posting.location}
 
 Candidatos disponibles:
 ${candidates.map((c: any, i: number) => `
-Candidato ${i + 1}:
-- Nombre: ${c.profiles?.full_name}
+[${i}] ${c.profiles?.full_name}
 - Puesto deseado: ${c.desired_position}
 - Área: ${c.desired_area}
 - Modalidad: ${c.work_modality}
 - Ubicación: ${c.location}
 - Habilidades: ${c.skills?.join(", ")}
+${c.cv_text ? `- CV: ${c.cv_text.slice(0, 500)}` : ""}
 `).join("\n")}
 
-Responde ÚNICAMENTE con un JSON con este formato, sin texto adicional:
-{
-  "matches": [
-    { "index": 0, "match_score": 85 },
-    { "index": 2, "match_score": 72 }
-  ]
-}
+Responde ÚNICAMENTE con un JSON sin texto adicional:
+{"matches":[{"index":0,"match_score":85}]}
 Solo incluye candidatos con match_score mayor a 50. Ordena de mayor a menor score.`
 
     const response = await anthropic.messages.create({
@@ -57,7 +52,12 @@ Solo incluye candidatos con match_score mayor a 50. Ordena de mayor a menor scor
     })
 
     const text = response.content[0].type === "text" ? response.content[0].text : "{}"
-    const parsed = JSON.parse(text.replace(/```json|```/g, "").trim())
+    let parsed: any = { matches: [] }
+    try {
+      parsed = JSON.parse(text.replace(/```json|```/g, "").trim())
+    } catch (e) {
+      console.error("JSON parse error:", e)
+    }
 
     const result = (parsed.matches || []).map((m: any) => ({
       ...candidates[m.index],

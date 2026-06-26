@@ -13,6 +13,9 @@ export async function POST(req: NextRequest) {
   try {
     const { posting, company_name } = await req.json()
 
+    console.log("company_id:", posting.company_id)
+    console.log("posting completo:", JSON.stringify(posting))
+
     const { data: candidates } = await supabase
       .from("candidate_profiles")
       .select("*, profiles(full_name)")
@@ -21,6 +24,13 @@ export async function POST(req: NextRequest) {
     if (!candidates || candidates.length === 0) {
       return NextResponse.json({ notified: 0 })
     }
+
+    // Obtener contacto de la empresa una sola vez
+    const { data: companyData } = await supabase
+      .from("company_profiles")
+      .select("phone, email")
+      .eq("id", posting.company_id)
+      .single()
 
     const prompt = `Analiza qué candidatos son compatibles con esta vacante y asigna un score.
 
@@ -69,7 +79,13 @@ Solo incluye candidatos con match_score mayor a 80.`
           job_posting_id: posting.id,
           company_name,
           job_title: posting.title,
-          match_score: match.match_score
+          match_score: match.match_score,
+          job_location: posting.location || null,
+          job_modality: posting.modality || null,
+          job_salary: posting.salary_range || null,
+          job_description: posting.description || null,
+          job_phone: companyData?.phone || null,
+          job_email: companyData?.email || null
         })
         notified++
       }

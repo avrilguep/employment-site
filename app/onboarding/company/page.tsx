@@ -20,6 +20,9 @@ export default function CompanyOnboarding() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
+  const [phone, setPhone] = useState("")
+  const [email, setEmail] = useState("")
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError("")
@@ -28,7 +31,12 @@ export default function CompanyOnboarding() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error("No hay sesión activa")
       const { error } = await supabase.from("company_profiles").upsert({
-        id: user.id, company_name: companyName, industry, description,
+        id: user.id, 
+        company_name: companyName, 
+        industry, 
+        description,
+        phone,
+        email
       })
       if (error) throw error
       router.push("/dashboard/company")
@@ -72,6 +80,18 @@ export default function CompanyOnboarding() {
             <textarea value={description} onChange={e => setDescription(e.target.value)}
               placeholder="¿A qué se dedica tu empresa? ¿Qué tipo de talento busca normalmente?"
               rows={4} className={styles.textarea} />
+          </div>
+
+          <div className={styles.field}>
+            <label className={styles.label}>Teléfono de contacto</label>
+            <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
+              placeholder="Ej: +52 55 1234 5678" className={styles.input} />
+          </div>
+
+          <div className={styles.field}>
+            <label className={styles.label}>Correo electrónico</label>
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+              placeholder="Ej: info@empresa.com" className={styles.input} />
           </div>
 
           {error && <p className={styles.error}>{error}</p>}

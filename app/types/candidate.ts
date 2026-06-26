@@ -8,6 +8,7 @@ export type CandidateProfile = {
   skills: string[]
   cv_text: string
   cv_public: boolean
+  is_premium?: boolean
 }
 
 export type Message = {
@@ -18,9 +19,14 @@ export type Message = {
 export type Job = {
   title: string
   company_name: string
-  modality: string
-  location: string
-  salary_range: string
-  industry: string
   match_score?: number
+  location?: string
+  salary_range?: string
+  modality?: string
+  industry?: string
+  description?: string  
+  url?: string
+  source?: string
+  phone?: string
+  email?: string
 }

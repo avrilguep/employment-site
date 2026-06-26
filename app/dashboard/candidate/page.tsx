@@ -188,6 +188,32 @@ function JobsSection({ profile }: { profile: CandidateProfile | null }) {
   const [showModal, setShowModal] = useState(false)
   const [selectedJob, setSelectedJob] = useState<Job | null>(null)
   const [filters, setFilters] = useState({ position: "", location: "", modality: "", company_type: "" })
+  const supabase = createClient()
+  const [isPremium, setIsPremium] = useState(false)
+
+  useEffect(() => {
+    async function checkPremium() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data } = await supabase
+        .from("candidate_profiles")
+        .select("is_premium")
+        .eq("id", user.id)
+        .single()
+      if (data?.is_premium) setIsPremium(true)
+    }
+    checkPremium()
+  }, [])
+
+  async function handleSubscribe() {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    await supabase
+      .from("candidate_profiles")
+      .update({ is_premium: true })
+      .eq("id", user.id)
+    setIsPremium(true)
+  }
 
   async function handleUploadCV(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -288,28 +314,146 @@ function JobsSection({ profile }: { profile: CandidateProfile | null }) {
                 {job.match_score && <span className={styles.badgeCandidate}>{job.match_score}% match</span>}
               </div>
               <p className={styles.itemSub}>{job.company_name} · {job.modality}</p>
-              <div className={styles.lockedRow}>
-                <div className={styles.lockedBox}>
-                  <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" className={styles.lockedText}>
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
-                  <span className={styles.lockedText}>Ubicación, salario y detalles — Plan Premium</span>
+              {isPremium ? (
+                <div style={{ marginTop: "0.75rem", display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                  {job.location && (
+                    <p style={{ fontSize: "0.8rem", color: "#475569" }}>📍 {job.location}</p>
+                  )}
+                  {job.salary_range && (
+                    <p style={{ fontSize: "0.8rem", color: "#475569" }}>💰 {job.salary_range}</p>
+                  )}
+                  {job.industry && (
+                    <p style={{ fontSize: "0.8rem", color: "#475569" }}>🏢 {job.industry}</p>
+                  )}
                 </div>
-                <button onClick={() => handleViewDetails(job)} className={`${styles.btnCandidate} ${styles.btnSm}`}>
-                  Ver detalles
-                </button>
-              </div>
+              ) : (
+                <div className={styles.lockedRow}>
+                  <div className={styles.lockedBox}>
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" className={styles.lockedText}>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    <span className={styles.lockedText}>Ubicación, salario y detalles — Plan Premium</span>
+                  </div>
+                  <button onClick={() => handleViewDetails(job)} className={`${styles.btnCandidate} ${styles.btnSm}`}>
+                    Ver detalles
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
       ))}
 
-      {showModal && selectedJob && <MembershipModal job={selectedJob} onClose={() => setShowModal(false)} />}
+      {showModal && selectedJob && (
+        <MembershipModal
+          job={selectedJob}
+          onClose={() => setShowModal(false)}
+          onSubscribe={handleSubscribe}
+          isPremium={isPremium}
+        />
+      )}        
     </div>
   )
 }
 
-function MembershipModal({ job, onClose }: { job: Job; onClose: () => void }) {
+function MembershipModal({ job, onClose, onSubscribe, isPremium }: {
+  job: Job
+  onClose: () => void
+  onSubscribe: () => void
+  isPremium: boolean
+}) {
+  if (isPremium) {
+    return (
+      <div className={styles.modalOverlay} onClick={onClose}>
+        <div className={styles.modalBox} onClick={e => e.stopPropagation()}>
+
+          {/* Header */}
+          <div className={styles.modalHeader}>
+            <div className={styles.modalHeaderRow}>
+              <span style={{
+                fontSize: "0.75rem", fontWeight: 500, padding: "0.2rem 0.6rem",
+                borderRadius: "999px", background: "#d1fae5", color: "#059669"
+              }}>
+                ✓ Premium
+              </span>
+              <button onClick={onClose} className={styles.modalClose}>×</button>
+            </div>
+            <h2 className={styles.modalTitle}>{job.title}</h2>
+            <p className={styles.modalSub}>{job.company_name}</p>
+            {job.match_score && (
+              <span style={{
+                fontSize: "0.75rem", fontWeight: 600, padding: "0.2rem 0.75rem",
+                borderRadius: "999px", background: "#d1fae5", color: "#059669",
+                display: "inline-block", marginTop: "0.5rem"
+              }}>
+                {job.match_score}% compatible
+              </span>
+            )}
+          </div>
+
+          {/* Detalles completos */}
+          <div className={styles.modalBody}>
+            <p className={styles.labelSm} style={{ marginBottom: "0.75rem" }}>
+              Detalles de la vacante
+            </p>
+            <div className={styles.detailGrid}>
+              {[
+                { label: "📍 Ubicación", value: job.location },
+                { label: "💰 Salario", value: job.salary_range },
+                { label: "🏢 Modalidad", value: job.modality },
+                { label: "🏭 Industria", value: job.industry },
+              ].map(item => item.value && (
+                <div key={item.label} className={styles.detailRow}>
+                  <span className={styles.detailLabel}>{item.label}</span>
+                  <span className={styles.detailValue}>{item.value}</span>
+                </div>
+              ))}
+            </div>
+            
+            {job.description && (
+              <div style={{ marginTop: "1rem" }}>
+                <p className={styles.labelSm} style={{ marginBottom: "0.5rem" }}>
+                  Descripción
+                </p>
+                <p style={{ fontSize: "0.875rem", color: "#475569", lineHeight: 1.6 }}>
+                  {job.description}
+                </p>
+              </div>
+            )}
+
+             {(job.phone || job.email) && (
+              <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid #f1f5f9" }}>
+                <p className={styles.labelSm} style={{ marginBottom: "0.5rem" }}>
+                  Contacto directo
+                </p>
+                {job.phone && (
+                  <p style={{ fontSize: "0.875rem", color: "#475569", marginBottom: "0.25rem" }}>
+                    📞 {job.phone}
+                  </p>
+                )}
+                {job.email && (
+                  <a
+                    href={`mailto:${job.email}`}
+                    style={{ fontSize: "0.875rem", color: "#10b981", textDecoration: "none" }}
+                  >
+                    ✉️ {job.email}
+                  </a>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className={styles.modalFooter}>
+            <button onClick={onClose} className={`${styles.btnCandidate} ${styles.btnFullWidth}`}>
+              Cerrar
+            </button>
+          </div>
+
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className={styles.modalOverlay} onClick={onClose}>
       <div className={styles.modalBox} onClick={e => e.stopPropagation()}>
@@ -326,10 +470,10 @@ function MembershipModal({ job, onClose }: { job: Job; onClose: () => void }) {
           <p className={styles.labelSm} style={{ marginBottom: "0.75rem" }}>Detalles de la vacante</p>
           <div className={styles.detailGrid}>
             {[
-              { label: "Ubicación", value: job.location },
-              { label: "Salario", value: job.salary_range || "No especificado" },
-              { label: "Modalidad", value: job.modality },
-              { label: "Industria", value: job.industry },
+              { label: "Ubicación" },
+              { label: "Salario" },
+              { label: "Modalidad" },
+              { label: "Industria" },
             ].map(item => (
               <div key={item.label} className={styles.detailUnlockRow}>
                 <span className={styles.lockedText}>{item.label}</span>
@@ -363,7 +507,7 @@ function MembershipModal({ job, onClose }: { job: Job; onClose: () => void }) {
             <div className={styles.planBoxHighlight}>
               <span className={styles.planBadge}>Recomendado</span>
               <p className={styles.planLabel}>Plan Premium</p>
-              {["Todo lo anterior", "Detalles completos", "Salario y ubicación", "Contacto directo", "Vacantes ilimitadas","Notificaciones completas"].map(text => (
+              {["Todo lo anterior", "Detalles completos", "Salario y ubicación", "Contacto directo", "Vacantes ilimitadas", "Notificaciones completas"].map(text => (
                 <p key={text} className={styles.planItem}>
                   <span className={styles.checkGreen}>✓</span> {text}
                 </p>
@@ -377,7 +521,10 @@ function MembershipModal({ job, onClose }: { job: Job; onClose: () => void }) {
             <span className={styles.priceValue}>$119</span>
             <span className={styles.priceUnit}>MXN / mes</span>
           </div>
-          <button onClick={() => {}} className={`${styles.btnCandidate} ${styles.btnFullWidth}`}>
+          <button
+            onClick={onSubscribe}
+            className={`${styles.btnCandidate} ${styles.btnFullWidth}`}
+          >
             Suscribirse a Premium
           </button>
           <p className={styles.fineprint}>Cancela cuando quieras · Sin compromisos</p>
@@ -676,6 +823,32 @@ function NotificationBell({ candidateId }: { candidateId: string }) {
   const [selectedJob, setSelectedJob] = useState<any>(null)
   const [showModal, setShowModal] = useState(false)
   const unread = notifications.filter(n => !n.read).length
+  const [isPremium, setIsPremium] = useState(false)
+
+   async function handleSubscribe() {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    await supabase
+      .from("candidate_profiles")
+      .update({ is_premium: true })
+      .eq("id", user.id)
+    setIsPremium(true)
+  }
+
+  useEffect(() => {
+    async function checkPremium() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data } = await supabase
+        .from("candidate_profiles")
+        .select("is_premium")
+        .eq("id", user.id)
+        .single()
+      if (data?.is_premium) setIsPremium(true)
+    }
+    checkPremium()
+  }, [])
+
 
   useEffect(() => {
     if (!candidateId) return
@@ -811,9 +984,12 @@ function NotificationBell({ candidateId }: { candidateId: string }) {
                             title: n.job_title,
                             company_name: n.company_name,
                             match_score: n.match_score,
-                            location: null,
-                            salary_range: null,
-                            modality: null,
+                            location: n.job_location,
+                            salary_range: n.job_salary,
+                            modality: n.job_modality,
+                            description: n.job_description,
+                            phone: n.job_phone,
+                            email: n.job_email,
                             industry: null
                           })
                           setShowModal(true)
@@ -845,8 +1021,13 @@ function NotificationBell({ candidateId }: { candidateId: string }) {
       )}
 
       {showModal && selectedJob && (
-              <MembershipModal job={selectedJob} onClose={() => setShowModal(false)} />
-            )}
+        <MembershipModal
+          job={selectedJob}
+          onClose={() => setShowModal(false)}
+          onSubscribe={handleSubscribe}
+          isPremium={isPremium}
+        />
+      )}
     </div>
   )
 }
