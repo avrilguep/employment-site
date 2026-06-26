@@ -363,7 +363,7 @@ function MembershipModal({ job, onClose }: { job: Job; onClose: () => void }) {
             <div className={styles.planBoxHighlight}>
               <span className={styles.planBadge}>Recomendado</span>
               <p className={styles.planLabel}>Plan Premium</p>
-              {["Todo lo anterior", "Detalles completos", "Salario y ubicación", "Contacto directo", "Vacantes ilimitadas"].map(text => (
+              {["Todo lo anterior", "Detalles completos", "Salario y ubicación", "Contacto directo", "Vacantes ilimitadas","Notificaciones completas"].map(text => (
                 <p key={text} className={styles.planItem}>
                   <span className={styles.checkGreen}>✓</span> {text}
                 </p>
@@ -374,7 +374,7 @@ function MembershipModal({ job, onClose }: { job: Job; onClose: () => void }) {
 
         <div className={styles.modalFooter}>
           <div className={styles.priceRow}>
-            <span className={styles.priceValue}>$79</span>
+            <span className={styles.priceValue}>$119</span>
             <span className={styles.priceUnit}>MXN / mes</span>
           </div>
           <button onClick={() => {}} className={`${styles.btnCandidate} ${styles.btnFullWidth}`}>
@@ -673,6 +673,8 @@ function NotificationBell({ candidateId }: { candidateId: string }) {
   const supabase = createClient()
   const [notifications, setNotifications] = useState<any[]>([])
   const [open, setOpen] = useState(false)
+  const [selectedJob, setSelectedJob] = useState<any>(null)
+  const [showModal, setShowModal] = useState(false)
   const unread = notifications.filter(n => !n.read).length
 
   useEffect(() => {
@@ -744,7 +746,7 @@ function NotificationBell({ candidateId }: { candidateId: string }) {
           borderRadius: "0.75rem",
           boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
           width: "300px",
-          zIndex: 100,
+          zIndex: 40,
           overflow: "hidden"
         }}>
           <div style={{
@@ -771,27 +773,28 @@ function NotificationBell({ candidateId }: { candidateId: string }) {
               </p>
             ) : (
               notifications.map((n, i) => (
-                <div key={i} style={{
-                  padding: "0.875rem 1rem",
-                  borderBottom: "1px solid #f8fafc",
-                  background: n.read ? "white" : "#f0fdf9"
-                }}>
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem" }}>
-                    <div style={{
-                      width: "8px",
-                      height: "8px",
-                      borderRadius: "50%",
-                      background: n.read ? "#e2e8f0" : "#10b981",
-                      flexShrink: 0,
-                      marginTop: "5px"
-                    }} />
-                    <div>
-                      <p style={{ fontSize: "0.8rem", color: "#0f172a", margin: "0 0 0.25rem 0", fontWeight: 500 }}>
-                        Nueva vacante compatible
-                      </p>
-                      <p style={{ fontSize: "0.75rem", color: "#334155", margin: "0 0 0.25rem 0" }}>
-                        <strong>{n.job_title}</strong> en {n.company_name}
-                      </p>
+              <div key={i} style={{
+                padding: "0.875rem 1rem",
+                borderBottom: "1px solid #f8fafc",
+                background: n.read ? "white" : "#f0fdf9"
+              }}>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem" }}>
+                  <div style={{
+                    width: "8px",
+                    height: "8px",
+                    borderRadius: "50%",
+                    background: n.read ? "#e2e8f0" : "#10b981",
+                    flexShrink: 0,
+                    marginTop: "5px"
+                  }} />
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: "0.8rem", color: "#0f172a", margin: "0 0 0.25rem 0", fontWeight: 500 }}>
+                      Nueva vacante compatible
+                    </p>
+                    <p style={{ fontSize: "0.75rem", color: "#334155", margin: "0 0 0.25rem 0" }}>
+                      <strong>{n.job_title}</strong> en {n.company_name}
+                    </p>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "0.5rem" }}>
                       <span style={{
                         fontSize: "0.7rem",
                         background: "#d1fae5",
@@ -802,14 +805,48 @@ function NotificationBell({ candidateId }: { candidateId: string }) {
                       }}>
                         {n.match_score}% match
                       </span>
+                      <button
+                        onClick={() => {
+                          setSelectedJob({
+                            title: n.job_title,
+                            company_name: n.company_name,
+                            match_score: n.match_score,
+                            location: null,
+                            salary_range: null,
+                            modality: null,
+                            industry: null
+                          })
+                          setShowModal(true)
+                          setOpen(false)
+                        }}
+                        style={{
+                          fontSize: "0.7rem",
+                          background: "#10b981",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "0.375rem",
+                          padding: "0.25rem 0.625rem",
+                          cursor: "pointer",
+                          fontFamily: "Arial, sans-serif"
+                        }}
+                      >
+                        Ver vacante
+                      </button>
                     </div>
                   </div>
                 </div>
-              ))
+              </div>
+            ))
             )}
+
+            
           </div>
         </div>
       )}
+
+      {showModal && selectedJob && (
+              <MembershipModal job={selectedJob} onClose={() => setShowModal(false)} />
+            )}
     </div>
   )
 }
