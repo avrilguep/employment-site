@@ -96,7 +96,12 @@ export default function CompanyDashboard() {
           ))}
         </div>
 
-        {activeTab === "publish" && <PublishSection onPublished={() => setActiveTab("postings")} />}
+        {activeTab === "publish" && (
+          <PublishSection
+            onPublished={() => setActiveTab("postings")}
+            companyName={profile?.company_name || "Una empresa"}
+          />
+        )}
         {activeTab === "postings" && <PostingsSection />}
         {activeTab === "analyze" && <AnalyzeSection profile={profile} />}
       </div>
@@ -104,7 +109,7 @@ export default function CompanyDashboard() {
   )
 }
 
-function PublishSection({ onPublished }: { onPublished: () => void }) {
+function PublishSection({ onPublished, companyName }: { onPublished: () => void, companyName: string }) {
   const supabase = createClient()
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
@@ -132,11 +137,31 @@ function PublishSection({ onPublished }: { onPublished: () => void }) {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error("No hay sesión activa")
-      const { error } = await supabase.from("job_postings").insert({
-        company_id: user.id, title, description,
-        required_skills: skills, modality, location, salary_range: salaryRange,
-      })
+      const { data, error } = await supabase.from("job_postings").insert({
+        company_id: user.id,
+        title,
+        description,
+        required_skills: skills,
+        modality,
+        location,
+        salary_range: salaryRange,
+      }).select().single()
       if (error) throw error
+
+      // Notificar candidatos compatibles
+      const newPosting = {
+        ...{ title, description, required_skills: skills, modality, location, salary_range: salaryRange },
+        id: data?.id
+      }
+      fetch("/api/notify-candidates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          posting: newPosting,
+          company_name: companyName || "Una empresa"
+        })
+      })
+
       onPublished()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Ocurrió un error")

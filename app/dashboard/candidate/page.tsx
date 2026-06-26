@@ -41,7 +41,10 @@ export default function CandidateDashboard() {
           <span className={styles.navTitle}>Employment Site</span>
           <span className={styles.badgeCandidate}>{profile?.full_name || "Candidato"}</span>
         </div>
-        <button onClick={handleSignOut} className={styles.signOutBtn}>Cerrar sesión</button>
+        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+          {profile && <NotificationBell candidateId={profile.id} />}
+          <button onClick={handleSignOut} className={styles.signOutBtn}>Cerrar sesión</button>
+        </div>
       </nav>
 
       <div className={styles.content}>
@@ -663,6 +666,150 @@ function ExternalSearchSection({ profile }: { profile: CandidateProfile | null }
           </div>
         </div>
       ))}
+    </div>
+  )
+}
+function NotificationBell({ candidateId }: { candidateId: string }) {
+  const supabase = createClient()
+  const [notifications, setNotifications] = useState<any[]>([])
+  const [open, setOpen] = useState(false)
+  const unread = notifications.filter(n => !n.read).length
+
+  useEffect(() => {
+    if (!candidateId) return
+    async function load() {
+      const { data } = await supabase
+        .from("notifications")
+        .select("*")
+        .eq("candidate_id", candidateId)
+        .order("created_at", { ascending: false })
+        .limit(10)
+      setNotifications(data || [])
+    }
+    load()
+  }, [candidateId])
+
+  async function markAllRead() {
+    await supabase
+      .from("notifications")
+      .update({ read: true })
+      .eq("candidate_id", candidateId)
+      .eq("read", false)
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })))
+  }
+
+  return (
+    <div style={{ position: "relative" }}>
+      <button
+        onClick={() => { setOpen(!open); if (!open && unread > 0) markAllRead() }}
+        style={{
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          position: "relative",
+          padding: "0.25rem",
+          color: "#64748b"
+        }}
+      >
+        <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+        </svg>
+        {unread > 0 && (
+          <span style={{
+            position: "absolute",
+            top: "-2px",
+            right: "-2px",
+            background: "#ef4444",
+            color: "white",
+            fontSize: "0.65rem",
+            fontWeight: 700,
+            width: "16px",
+            height: "16px",
+            borderRadius: "50%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center"
+          }}>
+            {unread > 9 ? "9+" : unread}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div style={{
+          position: "absolute",
+          right: 0,
+          top: "2rem",
+          background: "white",
+          borderRadius: "0.75rem",
+          boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
+          width: "300px",
+          zIndex: 100,
+          overflow: "hidden"
+        }}>
+          <div style={{
+            padding: "0.75rem 1rem",
+            borderBottom: "1px solid #f1f5f9",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between"
+          }}>
+            <p style={{ fontSize: "0.875rem", fontWeight: 600, color: "#0f172a", margin: 0 }}>
+              Notificaciones
+            </p>
+            {unread > 0 && (
+              <span style={{ fontSize: "0.7rem", color: "#94a3b8" }}>
+                {unread} nueva{unread !== 1 ? "s" : ""}
+              </span>
+            )}
+          </div>
+
+          <div style={{ maxHeight: "360px", overflowY: "auto" }}>
+            {notifications.length === 0 ? (
+              <p style={{ fontSize: "0.8rem", color: "#94a3b8", textAlign: "center", padding: "2rem" }}>
+                No tienes notificaciones
+              </p>
+            ) : (
+              notifications.map((n, i) => (
+                <div key={i} style={{
+                  padding: "0.875rem 1rem",
+                  borderBottom: "1px solid #f8fafc",
+                  background: n.read ? "white" : "#f0fdf9"
+                }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem" }}>
+                    <div style={{
+                      width: "8px",
+                      height: "8px",
+                      borderRadius: "50%",
+                      background: n.read ? "#e2e8f0" : "#10b981",
+                      flexShrink: 0,
+                      marginTop: "5px"
+                    }} />
+                    <div>
+                      <p style={{ fontSize: "0.8rem", color: "#0f172a", margin: "0 0 0.25rem 0", fontWeight: 500 }}>
+                        Nueva vacante compatible
+                      </p>
+                      <p style={{ fontSize: "0.75rem", color: "#334155", margin: "0 0 0.25rem 0" }}>
+                        <strong>{n.job_title}</strong> en {n.company_name}
+                      </p>
+                      <span style={{
+                        fontSize: "0.7rem",
+                        background: "#d1fae5",
+                        color: "#059669",
+                        padding: "0.1rem 0.5rem",
+                        borderRadius: "999px",
+                        fontWeight: 600
+                      }}>
+                        {n.match_score}% match
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
